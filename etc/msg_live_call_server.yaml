@@ -1,0 +1,86 @@
+Name: msg_live_call_server
+Host: 0.0.0.0
+Port: 21000
+Mode: debug
+# exposed外网暴露模式，校验用户token
+# backend后端模式，校验ip
+DeployMode: "backend"
+IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
+IM:
+  OnlineTimeout: 20
+  MaxGroupMember: 500
+  MaxSuperGroupMember: 100000
+WebSocket:
+  Uri: "/ws"
+  MaxClient: 50000
+  MultiPlatform: 0
+Node:
+  MaxCount: 1024
+  PollingInterval: 15
+Logger:
+  Dir: logs
+  RetainAge: 720
+  RotationAge: 1
+RedisSource:
+  Endpoint: ${REDIS_ENDPOINT}
+  Uri: "/0"
+  MaxIdleConn: 8
+  MaxOpenConn: 16
+  ConnMaxLifeTime: 3600
+  ConnMaxIdleTime: 3600
+Models:
+  - Name: "session"
+    Shards: 5
+  - Name: "user_session"
+    Shards: 5
+  - Name: "session_user"
+    Shards: 5
+  - Name: "session_message"
+    Shards: 5
+  - Name: "user_message"
+    Shards: 5
+  - Name: "user_online_status"
+    Shards: 1
+Metric:
+  Endpoint: "/metrics"
+  PushGateway: ""
+  PushInterval: 10
+Sdks:
+  - Name: user_api
+    Endpoint: "http://host.docker.internal:10000"
+  - Name: msg_api
+    Endpoint: "http://host.docker.internal:20000"
+MsgQueue:
+  Publishers:
+    - Topic: "server_event"
+      RedisPublisher:
+        MaxQueueLen: 100000
+        RedisSource:
+          Endpoint: ${REDIS_ENDPOINT}
+          Uri: "/0"
+          MaxIdleConn: 2
+          MaxOpenConn: 4
+          ConnMaxLifeTime: 3600
+          ConnMaxIdleTime: 3600
+  Subscribers:
+    - Topic: "push_msg"
+      RedisSubscriber:
+        RedisSource:
+          Endpoint: ${REDIS_ENDPOINT}
+          Uri: "/0"
+          MaxIdleConn: 2
+          MaxOpenConn: 4
+          ConnMaxLifeTime: 3600
+          ConnMaxIdleTime: 3600
+        RetryTime: 10
+    - Topic: "server_event"
+      RedisSubscriber:
+        RedisSource:
+          Endpoint: ${REDIS_ENDPOINT}
+          Uri: "/0"
+          MaxIdleConn: 2
+          MaxOpenConn: 4
+          ConnMaxLifeTime: 3600
+          ConnMaxIdleTime: 3600
+        RetryTime: 10
+
