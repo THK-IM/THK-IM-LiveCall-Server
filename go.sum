@@ -313,6 +313,7 @@ github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXl
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/thk-im/thk-im-base-server v0.0.0-20231231091140-a2d81cd7fcbc h1:q0oWeVOxhDdeofWHcdgNme2bn/4zDpMRBUx0iRtc91A=
 github.com/thk-im/thk-im-base-server v0.0.0-20231231091140-a2d81cd7fcbc/go.mod h1:mkf72EZpdD7ab64Lo883W/+8aphmUijpyAR2jURnpbE=
+github.com/thk-im/thk-im-base-server v0.0.0-20240102130158-f585b8a86afa/go.mod h1:TQaEvvwbtE/BFE6S/kj0MyZlSiq3Eej1nJn/ph9S1VU=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=

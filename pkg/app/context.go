@@ -2,6 +2,8 @@ package app
 
 import (
 	"github.com/sirupsen/logrus"
+	"github.com/thk-im/thk-im-base-server/server"
+	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
@@ -13,24 +15,23 @@ type Context struct {
 	cacheService cache.Service
 	roomService  room.Service
 	logger       *logrus.Entry
+	*server.Context
 }
 
-func (a *Context) RoomService() room.Service {
-	return a.roomService
+func (c *Context) RoomService() room.Service {
+	return c.roomService
 }
 
-func (a *Context) CacheService() cache.Service {
-	return a.cacheService
+func (c *Context) CacheService() cache.Service {
+	return c.cacheService
 }
 
-func (a *Context) StatService() stat.Service {
-	return a.statService
+func (c *Context) StatService() stat.Service {
+	return c.statService
 }
 
-func (a *Context) StartTime() int64 {
-	return a.startTime
-}
+func (c *Context) Init(config *conf.LiveCallConfig) {
+	c.Context = &server.Context{}
+	c.Context.Init(config.Config)
 
-func (a *Context) Logger() *logrus.Entry {
-	return a.logger
 }
