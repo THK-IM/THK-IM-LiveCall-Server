@@ -10,9 +10,9 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
 )
 
-func LoadCacheService(source *conf.Cache, logger *logrus.Entry, mode string) cache.Service {
+func LoadCacheService(source *conf.Cache, logger *logrus.Entry) cache.Service {
 	if source.Cluster == "Standalone" {
-		return cache.MakeLocalCache(logger, mode)
+		return cache.MakeLocalCache(logger)
 	} else if source.Cluster == "Cluster" {
 		redisClient := loadRedis(source.Redis)
 		return cache.MakeRedisCache(redisClient, logger)

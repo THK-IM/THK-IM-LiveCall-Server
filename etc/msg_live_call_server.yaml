@@ -1,6 +1,6 @@
 Name: msg_live_call_server
 Host: 0.0.0.0
-Port: 21000
+Port: 28000
 Mode: debug
 # exposed外网暴露模式，校验用户token
 # backend后端模式，校验ip
@@ -8,8 +8,8 @@ DeployMode: "backend"
 IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
 Rtc:
   Timeout: 1000 #单位ms,要考虑gc时间
-  NodeIp: {PUBLIC_IP} #公网ip
-  UdpPort: {PUBLIC_PORT} #公网端口
+  NodeIp: 192.168.1.11 #公网ip
+  UdpPort: 33333 #公网端口
 Node:
   MaxCount: 1024
   PollingInterval: 15
@@ -17,12 +17,19 @@ Logger:
   Dir: logs
   RetainAge: 720
   RotationAge: 1
+RedisSource:
+  Endpoint: ${REDIS_ENDPOINT}
+  Uri: "/0"
+  MaxIdleConn: 8
+  MaxOpenConn: 16
+  ConnMaxLifeTime: 3600
+  ConnMaxIdleTime: 3600
 Metric:
   Endpoint: "/metrics"
   PushGateway: ""
   PushInterval: 10
 Cache:
-  Cluster: Standalone
+  Cluster: Cluster
   RedisSource:
     Endpoint: ${REDIS_ENDPOINT}
     Uri: "/0"

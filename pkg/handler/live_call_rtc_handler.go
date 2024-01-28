@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/rtc"
+	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
 )
 
 func publish(rtcService rtc.Service) gin.HandlerFunc {

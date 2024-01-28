@@ -6,6 +6,6 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
 )
 
-func LoadRoomService(logger *logrus.Entry, cacheService cache.Service) room.Service {
-	return room.NewService(logger, cacheService)
+func LoadRoomService(cacheService cache.Service, logger *logrus.Entry) room.Service {
+	return room.NewService(cacheService, logger)
 }

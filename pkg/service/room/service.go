@@ -31,8 +31,8 @@ type Service interface {
 }
 
 func NewService(
-	logger *logrus.Entry,
 	cache cache.Service,
+	logger *logrus.Entry,
 ) Service {
 	return &ServiceImpl{
 		logger: logger,

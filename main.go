@@ -2,7 +2,10 @@ package main
 
 import (
 	baseConf "github.com/thk-im/thk-im-base-server/conf"
+	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
+	"github.com/thk-im/thk-im-livecall-server/pkg/handler"
+	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
 )
 
 func main() {
@@ -12,4 +15,10 @@ func main() {
 		panic(err)
 	}
 
+	appCtx := &app.Context{}
+	appCtx.Init(config)
+	rtcService := rtc.NewRtcService(config.Rtc, appCtx)
+	handler.RegisterRtcHandler(appCtx.HttpEngine(), appCtx, rtcService)
+
+	appCtx.StartServe()
 }

@@ -463,7 +463,7 @@ func NewRtcService(source *conf.Rtc, appCtx *app.Context) Service {
 		logger:             logEntry,
 		appCtx:             appCtx,
 		rwMutex:            &sync.RWMutex{},
-		roomPusherMap:      make(map[string]map[string]*Pusher, 0),
-		onPullRequestEvent: make(map[string]onPullRequestEvent, 0),
+		roomPusherMap:      make(map[string]map[string]*Pusher),
+		onPullRequestEvent: make(map[string]onPullRequestEvent),
 	}
 }
