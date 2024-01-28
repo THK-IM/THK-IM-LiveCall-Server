@@ -28,6 +28,9 @@ Metric:
   Endpoint: "/metrics"
   PushGateway: ""
   PushInterval: 10
+Sdks:
+  - Name: user_api
+    Endpoint: "http://user-api.thkim.com:10000"
 Cache:
   Cluster: Cluster
   RedisSource:

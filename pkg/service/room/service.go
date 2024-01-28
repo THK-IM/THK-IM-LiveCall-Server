@@ -15,7 +15,7 @@ import (
 const (
 	CacheKey                   = "live_server:room:%s"
 	ParticipantsKey            = "live_server:room:%s:participants"
-	ParticipantRequestRoomTime = "live_server:room:%s:uid:%s:request_time"
+	ParticipantRequestRoomTime = "live_server:room:%s:uid:%d:request_time"
 )
 
 type Service interface {
@@ -25,9 +25,9 @@ type Service interface {
 	// NodePublicIp 所在节点公网ip地址
 	NodePublicIp() string
 	JoinRoom(req *dto.RoomJoinReq) (*Room, error)
-	GetJoinRoomTime(roomId, uId string) (int64, error)
-	OnParticipantJoin(roomId, uId, streamKey string, joinTime int64, role int) error
-	OnParticipantLeave(roomId, uId, streamKey string) error
+	GetRequestJoinRoomTime(roomId string, uId int64) (int64, error)
+	OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error
+	OnParticipantLeave(roomId, streamKey string, uId int64) error
 }
 
 func NewService(
@@ -51,17 +51,17 @@ func (r *ServiceImpl) NodePublicIp() string {
 }
 
 func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
-	id := fmt.Sprintf("%d_%s", (time.Now().UnixNano()%int64(time.Hour))/int64(time.Second), req.Uid)
-	r.logger.Info(time.Now().UnixNano(), ", ", int64(time.Hour), ", ", id)
+	id := fmt.Sprintf("%d_%d", (time.Now().UnixNano()%int64(time.Second))/int64(time.Second), req.UId)
+	r.logger.Info(time.Now().UnixNano(), ", ", int64(time.Second), ", ", id)
 	room := &Room{
 		Id:         id,
 		Mode:       req.Mode,
-		OwnerId:    req.Uid,
+		OwnerId:    req.UId,
 		CreateTime: time.Now().UnixMilli(),
 	}
 	roomCacheKey := r.getRoomCacheKey(room.Id)
 	if value, err := r.cache.Get(roomCacheKey); err != nil {
-		if err != redis.Nil {
+		if !errors.Is(err, redis.Nil) {
 			return nil, err
 		}
 	} else {
@@ -73,13 +73,11 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
 	if jsonStr, err := room.Json(); err != nil {
 		return nil, err
 	} else {
-		// 房间过期时间修为1年
-		if room.Mode == ModeVoiceRoom {
-			err = r.cache.SetEx(roomCacheKey, jsonStr, time.Hour*24*365)
-		} else {
-			err = r.cache.SetEx(roomCacheKey, jsonStr, time.Minute*2)
+		err = r.cache.SetEx(roomCacheKey, jsonStr, time.Hour*24)
+		if err != nil {
+			return nil, err
 		}
-		requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.Uid)
+		requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.UId)
 		err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*5)
 		return room, err
 	}
@@ -90,7 +88,7 @@ func (r *ServiceImpl) JoinRoom(req *dto.RoomJoinReq) (*Room, error) {
 	if err != nil {
 		return nil, err
 	}
-	requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.Uid)
+	requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.UId)
 	err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*5)
 	return room, err
 }
@@ -142,7 +140,7 @@ func (r *ServiceImpl) DestroyRoom(id string) error {
 	return nil
 }
 
-func (r *ServiceImpl) getParticipantRequestRoomTimeKey(roomId, userId string) string {
+func (r *ServiceImpl) getParticipantRequestRoomTimeKey(roomId string, userId int64) string {
 	return fmt.Sprintf(ParticipantRequestRoomTime, roomId, userId)
 }
 
@@ -154,9 +152,9 @@ func (r *ServiceImpl) getParticipantsCacheKey(roomId string) string {
 	return fmt.Sprintf(ParticipantsKey, roomId)
 }
 
-func (r *ServiceImpl) OnParticipantJoin(roomId, uId, streamKey string, joinTime int64, role int) error {
+func (r *ServiceImpl) OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error {
 	participant := &Participant{
-		Uid:       uId,
+		UId:       uId,
 		Role:      role,
 		JoinTime:  joinTime,
 		StreamKey: &streamKey,
@@ -182,13 +180,13 @@ func (r *ServiceImpl) OnParticipantJoin(roomId, uId, streamKey string, joinTime 
 	return err
 }
 
-func (r *ServiceImpl) GetJoinRoomTime(roomId, uId string) (int64, error) {
+func (r *ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, error) {
 	requestTimeKey := r.getParticipantRequestRoomTimeKey(roomId, uId)
 	v, err := r.cache.Get(requestTimeKey)
 	if err != nil {
 		return 0, err
 	}
-	r.logger.Infof("GetJoinRoomTime %s, %s, %v", roomId, uId, v)
+	r.logger.Infof("GetRequestJoinRoomTime %s, %d, %v", roomId, uId, v)
 	t, ok := v.(string)
 	if ok {
 		it, _ := strconv.Atoi(t)
@@ -198,7 +196,7 @@ func (r *ServiceImpl) GetJoinRoomTime(roomId, uId string) (int64, error) {
 	}
 }
 
-func (r *ServiceImpl) OnParticipantLeave(roomId, uId, streamKey string) error {
+func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) error {
 	r.logger.Info("OnParticipantLeave", roomId, uId, streamKey)
 	cacheKey := r.getParticipantsCacheKey(roomId)
 	if err := r.cache.HDel(cacheKey, streamKey); err != nil {
@@ -210,17 +208,9 @@ func (r *ServiceImpl) OnParticipantLeave(roomId, uId, streamKey string) error {
 	} else {
 		r.logger.Info("OnParticipantLeave", roomId, uId, ps)
 		if ps == nil || len(ps) == 0 {
-			// 四号类型房间不销毁
-			room, err := r.FindRoomById(roomId)
-			if err != nil {
-				return err
-			}
-			if room.Mode != ModeVoiceRoom {
-				return r.DestroyRoom(roomId)
-			}
+			return r.DestroyRoom(roomId)
 		} else {
 			return nil
 		}
 	}
-	return nil
 }

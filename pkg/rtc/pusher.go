@@ -2,6 +2,7 @@ package rtc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/stats"
 	"github.com/pion/rtcp"
@@ -18,8 +19,8 @@ import (
 type Pusher struct {
 	roomId             string
 	roomMode           int
-	uid                string
 	key                string
+	uid                int64
 	createTime         int64
 	mutex              *sync.RWMutex
 	pullerMap          map[string]*Puller
@@ -41,8 +42,8 @@ func (c *Pusher) DcMap() map[string]*webrtc.DataChannel {
 	return c.dcMap
 }
 
-func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomMode int, roomId, uid, key, offerSdp string,
-	statService stat.Service, dataChannels []*DataChannelEvent, onConnConnected onConnConnected, onConnClosed onConnClosed,
+func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomMode int, uid int64, roomId, key, offerSdp string,
+	statService stat.Service, onConnConnected onConnConnected, onConnClosed onConnClosed,
 	onDataChannelEvent onDataChannelEvent) (*Pusher, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
@@ -180,7 +181,7 @@ func (c *Pusher) Serve() {
 
 func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 	if c.roomMode == room.ModeChat {
-		c.onConnConnected(c.roomId, c.uid, c.key, "")
+		c.onConnConnected(c.roomId, c.key, "", c.uid)
 	}
 	d.OnOpen(func() {
 		c.dcMap[d.Label()] = d
@@ -288,16 +289,16 @@ func (c *Pusher) ReceiveDataChannelEvent(event *DataChannelEvent) {
 }
 
 func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-	track, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability, c.key, c.uid)
+	track, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability, c.key, fmt.Sprintf("%d", c.uid))
 	if err != nil {
 		return
 	} else {
 		c.trackMap[strconv.Itoa(int(remote.SSRC()))] = track
 	}
 	if (c.roomMode == room.ModeAudio || c.roomMode == room.ModeVoiceRoom) && remote.Kind() == webrtc.RTPCodecTypeAudio {
-		c.onConnConnected(c.roomId, c.uid, c.key, "")
+		c.onConnConnected(c.roomId, c.key, "", c.uid)
 	} else if c.roomMode == room.ModeVideo && remote.Kind() == webrtc.RTPCodecTypeVideo {
-		c.onConnConnected(c.roomId, c.uid, c.key, "")
+		c.onConnConnected(c.roomId, c.key, "", c.uid)
 	}
 	go func(ssrc uint32) {
 		initSt := stat.NewStat(remote.ID(), c.key, int64(remote.Kind()), "", c.roomId, c.uid)
@@ -363,12 +364,14 @@ func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 func (c *Pusher) WriteKeyFrame() {
 	go func() {
 		for {
-			if c.peerConn.ConnectionState() > webrtc.PeerConnectionStateConnected {
-				break
-			}
 			c.mutex.RLock()
 			conn := c.peerConn
-			c.mutex.RUnlock()
+			if conn == nil {
+				break
+			}
+			if conn.ConnectionState() > webrtc.PeerConnectionStateConnected {
+				break
+			}
 			for k := range c.trackMap {
 				ssrc, err := strconv.Atoi(k)
 				if err == nil {
@@ -381,6 +384,7 @@ func (c *Pusher) WriteKeyFrame() {
 					c.logger.Errorf("WriteKeyFrame, err: %s", err.Error())
 				}
 			}
+			c.mutex.RUnlock()
 			time.Sleep(2 * time.Second)
 		}
 	}()
@@ -415,7 +419,7 @@ func (c *Pusher) Stop() {
 	c.mutex.Unlock()
 	c.logger.Trace("Stop: call onConnClosed ", c.uid, c.key)
 	if c.onConnClosed != nil {
-		c.onConnClosed(c.roomId, c.uid, c.key, "")
+		c.onConnClosed(c.roomId, c.key, "", c.uid)
 		c.onConnClosed = nil
 	}
 	if len(c.pullerMap) > 0 {

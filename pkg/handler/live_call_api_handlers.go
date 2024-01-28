@@ -1,23 +1,24 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
+	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
 )
 
-func RegisterRtcHandler(engine *gin.Engine, app *app.Context, rtcService rtc.Service) {
+func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 
-	room := engine.Group("/room")
-	// curl -i -X POST "http://127.0.0.1:18100/room" -d '{"uid": "1"}'
-	room.POST("", createRoom(app))
-	room.GET("", findRooms(app))
-	room.GET("/:id", findRoomById(app))
-	room.GET("/:id/stream", findStreamByRoomId(app))
-	// curl -i -X POST "http://127.0.0.1:18100/room/join" -d '{"u_id": 2, "room_id": "1", "role": 1, "token": "xxxxxx"}'
-	room.POST("/join", joinRoom(app))
+	httpEngine := appCtx.HttpEngine()
+	userApi := appCtx.UserApi()
+	userTokenAuth := userSdk.UserTokenAuth(userApi, appCtx.Logger())
+	httpEngine.Use(userTokenAuth)
 
-	stream := engine.Group("/stream")
-	stream.POST("/publish", publish(rtcService))
-	stream.POST("/play", play(rtcService))
+	room := httpEngine.Group("/room")
+	room.POST("", createRoom(appCtx))
+	room.GET("/:id", findRoomById(appCtx))
+	room.POST("/join", joinRoom(appCtx))
+
+	stream := httpEngine.Group("/stream")
+	stream.POST("/publish", publishStream(appCtx, rtcService))
+	stream.POST("/play", playStream(appCtx, rtcService))
 }

@@ -13,7 +13,7 @@ var statPool = sync.Pool{
 
 type Stat struct {
 	RoomId       string  `ch:"room_id"`        // 房间id
-	Uid          string  `ch:"uid"`            // 用户id
+	Uid          int64   `ch:"uid"`            // 用户id
 	StreamId     string  `ch:"stream_id"`      // 流id
 	StreamKey    string  `ch:"stream_key"`     // 流key
 	SfuStreamKey string  `ch:"sfu_stream_key"` // 转发的流的key
@@ -26,7 +26,7 @@ type Stat struct {
 	Jitter       float64 `ch:"jitter"`         // 延迟
 }
 
-func NewStat(streamId string, streamKey string, streamType int64, sfuStreamKey, roomId, uid string) *Stat {
+func NewStat(streamId string, streamKey string, streamType int64, sfuStreamKey, roomId string, uid int64) *Stat {
 	st := statPool.Get().(*Stat)
 	st.StreamId = streamId
 	st.StreamKey = streamKey

@@ -8,6 +8,7 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
+	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
 )
 
 type Context struct {
@@ -34,11 +35,16 @@ func (c *Context) StatService() stat.Service {
 func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.Context = &server.Context{}
 	c.Context.Init(config.Config)
+	c.Context.SdkMap = loader.LoadSdks(c.Config().Sdks, c.Logger())
 	logger := c.Context.Logger()
 	cacheService := loader.LoadCacheService(config.Cache, logger)
 	c.roomService = loader.LoadRoomService(cacheService, logger)
 	c.statService = loader.LoadStatService(config.Stat, logger)
 	c.cacheService = cacheService
+}
+
+func (c *Context) UserApi() userSdk.UserApi {
+	return c.Context.SdkMap["user_api"].(userSdk.UserApi)
 }
 
 func (c *Context) StartServe() {

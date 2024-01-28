@@ -14,7 +14,7 @@ import (
 
 type Puller struct {
 	roomId          string
-	uid             string
+	uid             int64
 	key             string
 	subKey          string
 	createTime      int64
@@ -31,7 +31,7 @@ type Puller struct {
 	writeKeyFrame   writeKeyFrame
 }
 
-func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomId, uid, subKey, offerSdp string,
+func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid int64, roomId, subKey, offerSdp string,
 	trackMap map[string]*webrtc.TrackLocalStaticRTP, statService stat.Service,
 	onConnConnected onConnConnected, onConnClosed onConnClosed, writeKeyFrame writeKeyFrame) (*Puller, error) {
 	m := &webrtc.MediaEngine{}
@@ -144,7 +144,7 @@ func (c *Puller) Serve() {
 }
 
 func (c *Puller) onConnected() {
-	c.onConnConnected(c.roomId, c.uid, c.key, c.subKey)
+	c.onConnConnected(c.roomId, c.key, c.subKey, c.uid)
 	senders := c.peerConn.GetSenders()
 	for _, sender := range senders {
 		encodings := sender.GetParameters().Encodings
@@ -211,7 +211,7 @@ func (c *Puller) Stop() {
 	}
 	c.mutex.Unlock()
 	if c.onConnClosed != nil {
-		c.onConnClosed(c.roomId, c.uid, c.key, c.subKey)
+		c.onConnClosed(c.roomId, c.key, c.subKey, c.uid)
 		c.onConnClosed = nil
 	}
 }

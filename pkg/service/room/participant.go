@@ -8,7 +8,7 @@ const (
 )
 
 type Participant struct {
-	Uid       string  `json:"uid"`                  // 用户id
+	UId       int64   `json:"u_id"`                 // 用户id
 	Role      int     `json:"role"`                 // 1主播 2观众
 	JoinTime  int64   `json:"join_time"`            // 加入时间
 	StreamKey *string `json:"stream_key,omitempty"` // 推流key

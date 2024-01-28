@@ -18,24 +18,23 @@ import (
 )
 
 const (
-	PublishStreamKey    = "/stream/%s/%s/%s"
-	SubscribeStreamKey  = "%s/sub/%s"
-	DataChannelCacheKey = "/datachannel/%s"
+	PublishStreamKey   = "/stream/%s/%d/%s"
+	SubscribeStreamKey = "%s/sub/%d"
 )
 
 type Service interface {
 	// InitServer 初始化服务
 	InitServer()
 	// RequestPublish 请求推流
-	RequestPublish(roomId, uid, offerSdp string) (*Pusher, error)
+	RequestPublish(roomId, offerSdp string, uid int64) (*Pusher, error)
 	// RequestPlay 请求拉流
 	RequestPlay(req *dto.PlayReq) (string, string, error)
 	// OnPusherConnected 开始推流
-	OnPusherConnected(roomId, uId, key, subKey string)
+	OnPusherConnected(roomId, key, subKey string, uid int64)
 	// OnPusherClosed 关闭
-	OnPusherClosed(roomId, uId, key, subKey string)
-	OnPullerConnected(roomId, uId, key, subKey string)
-	OnPullerClosed(roomId, uId, key, subKey string)
+	OnPusherClosed(roomId, key, subKey string, uid int64)
+	OnPullerConnected(roomId, key, subKey string, uid int64)
+	OnPullerClosed(roomId, key, subKey string, uid int64)
 }
 
 func (r serviceImpl) InitServer() {
@@ -45,7 +44,7 @@ func (r serviceImpl) InitServer() {
 			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", err)
 			return
 		}
-		puller, err := r.play(req.RoomId, req.Uid, req.StreamKey, req.OfferSdp)
+		puller, err := r.play(req.RoomId, req.StreamKey, req.OfferSdp, req.Uid)
 		if err != nil {
 			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", err)
 			return
@@ -144,18 +143,18 @@ func (r serviceImpl) notifyClientNewStream(msg string, publishEvent *PublishEven
 	pusherMap := r.roomPusherMap[publishEvent.RoomId]
 	if pusherMap != nil {
 		for _, v := range pusherMap {
-			r.logger.Infof("notifyClientNewStream: %s, uid: %s, %s", msg, v.uid, publishEvent.Uid)
-			if v.uid != publishEvent.Uid {
+			r.logger.Infof("notifyClientNewStream: %s, uid: %d, %d", msg, v.uid, publishEvent.UId)
+			if v.uid != publishEvent.UId {
 				if dc := v.dcMap[""]; dc != nil {
-					r.logger.Infof("notifyClientNewStream, uid: %s : dc is not nil,  %s", v.uid, publishEvent.Uid)
+					r.logger.Infof("notifyClientNewStream, uid: %d : dc is not nil,  %d", v.uid, publishEvent.UId)
 					notifyMsg := NewStreamNotify(msg)
 					if notifyMsg != nil {
 						if e := dc.SendText(*notifyMsg); e != nil {
-							r.logger.Errorf("notifyClientNewStream, err: %s, uid: %s, eventUid: %s", e.Error(), v.uid, publishEvent.Uid)
+							r.logger.Errorf("notifyClientNewStream, err: %s, uid: %d, eventUid: %d", e.Error(), v.uid, publishEvent.UId)
 						}
 					}
 				} else {
-					r.logger.Infof("notifyClientNewStream, uid: %s : dc is nil, event uid: %s ", v.uid, publishEvent.Uid)
+					r.logger.Infof("notifyClientNewStream, uid: %d : dc is nil, event uid: %d ", v.uid, publishEvent.UId)
 				}
 			}
 		}
@@ -168,7 +167,7 @@ func (r serviceImpl) notifyClientRemoveStream(msg string, publishEvent *PublishE
 	pusherMap := r.roomPusherMap[publishEvent.RoomId]
 	if pusherMap != nil {
 		for _, v := range pusherMap {
-			if v.uid != publishEvent.Uid {
+			if v.uid != publishEvent.UId {
 				if dc := v.dcMap[""]; dc != nil {
 					notifyMsg := RemoveStreamNotify(msg)
 					if notifyMsg != nil {
@@ -182,7 +181,7 @@ func (r serviceImpl) notifyClientRemoveStream(msg string, publishEvent *PublishE
 	}
 }
 
-func (r serviceImpl) OnPusherConnected(roomId, uId, key, subKey string) {
+func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 	if pusher, err := r.getPusher(roomId, key); err == nil {
 		role := room.Audience
 		if len(pusher.TrackMap()) > 0 {
@@ -190,11 +189,12 @@ func (r serviceImpl) OnPusherConnected(roomId, uId, key, subKey string) {
 		}
 		event := &PublishEvent{
 			RoomId:    roomId,
-			Uid:       uId,
+			UId:       uId,
 			StreamKey: key,
 			Role:      role,
 		}
-		joinTime := time.Now().UnixMilli()
+		pusherJoinTime := time.Now().UnixMilli()
+
 		// 需要通知所有节点的Pushers, 通过Pusher的DataChannel将流新增事件通知到客户端
 		if js, e := json.Marshal(event); e == nil {
 			if e = r.appCtx.CacheService().Pub(NotifyClientNewStreamEventKey, string(js)); e != nil {
@@ -203,43 +203,42 @@ func (r serviceImpl) OnPusherConnected(roomId, uId, key, subKey string) {
 		} else {
 			r.logger.Error("OnPusherConnected: ", roomId, uId, key, subKey, e)
 		}
+
 		// 房间服务更新参与人
-		if err = r.appCtx.RoomService().OnParticipantJoin(roomId, uId, key, joinTime, role); err != nil {
+		if err = r.appCtx.RoomService().OnParticipantJoin(roomId, key, pusherJoinTime, role, uId); err != nil {
 			r.logger.Error("OnParticipantJoin err:", err)
 		}
-		requestJoinTime, errJ := r.appCtx.RoomService().GetJoinRoomTime(roomId, uId)
+
+		// 当前用户请求加入房间的时间
+		requestJoinTime, errJ := r.appCtx.RoomService().GetRequestJoinRoomTime(roomId, uId)
 		if errJ != nil {
-			r.logger.Error("GetJoinRoomTime err:", err)
+			r.logger.Error("GetRequestJoinRoomTime err:", err)
 		}
 
-		// 找出自己请求房间信息时到自己推流成功这段时间内加入的人，推送给当前客户端
+		// 遍历房间参与人，看谁是在自己请求加入到正式加入之间进入的房间的用户，通过channel下发给当前参与人
 		if rm, errRoom := r.appCtx.RoomService().FindRoomById(roomId); errRoom == nil {
 			if rm != nil {
-				r.logger.Infof("joinTime, uid: %s, requestJoinTime: %d, joinTime:%d, %v", uId, requestJoinTime, joinTime, rm)
 				for _, p := range rm.Participants {
-					r.logger.Infof("joinTime, uid: %s, requestJoinTime: %d, joinTime:%d, pJoint: %d", uId, requestJoinTime, joinTime, p.JoinTime)
-					if p.JoinTime < joinTime && p.JoinTime > requestJoinTime {
+					if p.JoinTime < pusherJoinTime && p.JoinTime > requestJoinTime {
 						event = &PublishEvent{
 							RoomId:    roomId,
-							Uid:       p.Uid,
+							UId:       p.UId,
 							StreamKey: *p.StreamKey,
 							Role:      p.Role,
 						}
-						r.logger.Infof("ADDNotify, uid: %s : event uid: %s ", pusher.uid, p.Uid)
 						msg, errJson := json.Marshal(event)
 						if errJson != nil {
 							r.logger.Errorf("notifyClientNewStream json err, %v", event)
 						}
 						if dc := pusher.dcMap[""]; dc != nil {
-							r.logger.Infof("notifyClientNewStream, uid: %s : dc is not nil ", pusher.uid)
 							notifyMsg := NewStreamNotify(string(msg))
 							if notifyMsg != nil {
 								if e := dc.SendText(*notifyMsg); e != nil {
-									r.logger.Errorf("notifyClientNewStream, %s , uid: %s, event uid:%s", e.Error(), pusher.uid, p.Uid)
+									r.logger.Errorf("notifyClientNewStream, %s , uid: %d, event uid:%d", e.Error(), pusher.uid, p.UId)
 								}
 							}
 						} else {
-							r.logger.Infof("notifyClientNewStream, uid: %s , dc is not nil  event uid: %s ", pusher.uid, p.Uid)
+							r.logger.Infof("notifyClientNewStream, uid: %d , dc is not nil  event uid: %d ", pusher.uid, p.UId)
 						}
 					}
 				}
@@ -251,7 +250,7 @@ func (r serviceImpl) OnPusherConnected(roomId, uId, key, subKey string) {
 
 }
 
-func (r serviceImpl) OnPusherClosed(roomId, uId, key, subKey string) {
+func (r serviceImpl) OnPusherClosed(roomId, key, subKey string, uId int64) {
 	r.rwMutex.RLock()
 	defer r.rwMutex.RUnlock()
 	r.logger.Info("OnPusherConnected: ", roomId, uId, key, subKey)
@@ -264,7 +263,7 @@ func (r serviceImpl) OnPusherClosed(roomId, uId, key, subKey string) {
 	// 需要通知所有节点的Pushers, 通过Pusher的DataChannel将流移除事件通知到客户端
 	event := &PublishEvent{
 		RoomId:    roomId,
-		Uid:       uId,
+		UId:       uId,
 		StreamKey: key,
 	}
 	if js, e := json.Marshal(event); e == nil {
@@ -275,13 +274,13 @@ func (r serviceImpl) OnPusherClosed(roomId, uId, key, subKey string) {
 		r.logger.Error("OnPusherClosed: ", roomId, uId, key, subKey, e)
 	}
 
-	if err := r.appCtx.RoomService().OnParticipantLeave(roomId, uId, key); err != nil {
+	if err := r.appCtx.RoomService().OnParticipantLeave(roomId, key, uId); err != nil {
 		r.logger.Error("OnPusherClosed err:", err)
 	}
 
 }
 
-func (r serviceImpl) OnPullerConnected(roomId, _, _, subKey string) {
+func (r serviceImpl) OnPullerConnected(roomId, _, subKey string, _ int64) {
 	r.rwMutex.RLock()
 	defer r.rwMutex.RUnlock()
 	pusherMap := r.roomPusherMap[roomId]
@@ -293,7 +292,7 @@ func (r serviceImpl) OnPullerConnected(roomId, _, _, subKey string) {
 	}
 }
 
-func (r serviceImpl) OnPullerClosed(roomId, _, key, subKey string) {
+func (r serviceImpl) OnPullerClosed(roomId, key, subKey string, _ int64) {
 	r.rwMutex.RLock()
 	defer r.rwMutex.RUnlock()
 	if r.roomPusherMap[roomId] == nil {
@@ -329,20 +328,20 @@ func (r serviceImpl) RequestPlay(req *dto.PlayReq) (string, string, error) {
 	answerSdp := ""
 	quit := make(chan bool)
 	eventFunc := func(resp *ResponseSubscribeEvent) {
-		if resp.Uid == req.Uid &&
+		if resp.Uid == req.UId &&
 			resp.StreamKey == req.StreamKey {
 			answerSdp = resp.Answer
 			common.SafeOnceWrite(quit, true)
 		}
 	}
 
-	key := fmt.Sprintf(SubscribeStreamKey, req.StreamKey, req.Uid)
+	key := fmt.Sprintf(SubscribeStreamKey, req.StreamKey, req.UId)
 	r.onPullRequestEvent[key] = eventFunc
 	defer delete(r.onPullRequestEvent, key)
 
 	pullReqEvent := &RequestSubscribeEvent{
 		RoomId:    req.RoomId,
-		Uid:       req.Uid,
+		Uid:       req.UId,
 		OfferSdp:  req.OfferSdp,
 		StreamKey: req.StreamKey,
 	}
@@ -367,7 +366,7 @@ func (r serviceImpl) RequestPlay(req *dto.PlayReq) (string, string, error) {
 	}
 }
 
-func (r serviceImpl) play(roomId, uid, subStreamKey, offerSdp string) (*Puller, error) {
+func (r serviceImpl) play(roomId, subStreamKey, offerSdp string, uid int64) (*Puller, error) {
 	pusher, _ := r.getPusher(roomId, subStreamKey)
 	if pusher == nil {
 		return nil, errors.New("pusher not exist")
@@ -377,7 +376,7 @@ func (r serviceImpl) play(roomId, uid, subStreamKey, offerSdp string) (*Puller, 
 		return nil, errors.New("track not exist")
 	}
 	puller, err := MakePuller(
-		r.settingEngine, r.logger, roomId, uid, subStreamKey, offerSdp,
+		r.settingEngine, r.logger, uid, roomId, subStreamKey, offerSdp,
 		trackMap, r.appCtx.StatService(), r.OnPullerConnected, r.OnPullerClosed, r.WriteKeyFrame,
 	)
 	if err != nil {
@@ -402,15 +401,15 @@ func (r serviceImpl) onDataChannelEvent(event *DataChannelEvent) {
 	}
 }
 
-func (r serviceImpl) RequestPublish(roomId, uid, offerSdp string) (*Pusher, error) {
+func (r serviceImpl) RequestPublish(roomId, offerSdp string, uid int64) (*Pusher, error) {
 	_room, _ := r.appCtx.RoomService().FindRoomById(roomId)
 	if _room == nil {
 		return nil, errors.New("room is not existed")
 	}
 	key := fmt.Sprintf(PublishStreamKey, roomId, uid, common.GenUUid())
 	pusher, err := MakePusher(
-		r.settingEngine, r.logger, _room.Mode, roomId, uid, key, offerSdp, r.appCtx.StatService(),
-		nil, r.OnPusherConnected, r.OnPusherClosed, r.onDataChannelEvent)
+		r.settingEngine, r.logger, _room.Mode, uid, roomId, key, offerSdp, r.appCtx.StatService(),
+		r.OnPusherConnected, r.OnPusherClosed, r.onDataChannelEvent)
 	if err != nil {
 		r.logger.Errorf("createLiveConnection error: %s", err.Error())
 		return nil, err
@@ -418,7 +417,7 @@ func (r serviceImpl) RequestPublish(roomId, uid, offerSdp string) (*Pusher, erro
 	r.rwMutex.Lock()
 	defer r.rwMutex.Unlock()
 	if r.roomPusherMap[roomId] == nil {
-		r.roomPusherMap[roomId] = make(map[string]*Pusher, 0)
+		r.roomPusherMap[roomId] = make(map[string]*Pusher)
 	}
 	r.roomPusherMap[roomId][key] = pusher
 	pusher.Serve()

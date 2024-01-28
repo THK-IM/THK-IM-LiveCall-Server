@@ -13,6 +13,7 @@ require (
 	github.com/redis/go-redis/v9 v9.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/thk-im/thk-im-base-server v0.0.0-20240102130158-f585b8a86afa
+	github.com/thk-im/thk-im-user-server v0.0.0-20240111144602-bd022e8b653b
 	github.com/zoumo/goset v0.2.0
 )
 

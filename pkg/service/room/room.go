@@ -13,7 +13,7 @@ const (
 type Room struct {
 	Id           string         `json:"id"`
 	Mode         int            `json:"mode"`
-	OwnerId      string         `json:"owner_id"`
+	OwnerId      int64          `json:"owner_id"`
 	CreateTime   int64          `json:"create_time"`
 	Participants []*Participant `json:"participants,omitempty"`
 }

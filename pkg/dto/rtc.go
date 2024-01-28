@@ -2,7 +2,7 @@ package dto
 
 type PublishReq struct {
 	RoomId   string `json:"room_id"`
-	Uid      string `json:"uid"`
+	UId      int64  `json:"u_id"`
 	OfferSdp string `json:"offer_sdp"`
 }
 
@@ -13,7 +13,7 @@ type PublishResp struct {
 
 type PlayReq struct {
 	RoomId    string `json:"room_id"`
-	Uid       string `json:"uid"`
+	UId       int64  `json:"u_id"`
 	OfferSdp  string `json:"offer_sdp"`
 	StreamKey string `json:"stream_key"`
 }

@@ -18,7 +18,8 @@ func main() {
 	appCtx := &app.Context{}
 	appCtx.Init(config)
 	rtcService := rtc.NewRtcService(config.Rtc, appCtx)
-	handler.RegisterRtcHandler(appCtx.HttpEngine(), appCtx, rtcService)
+	rtcService.InitServer()
+	handler.RegisterRtcHandler(appCtx, rtcService)
 
 	appCtx.StartServe()
 }
