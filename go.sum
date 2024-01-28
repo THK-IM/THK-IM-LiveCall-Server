@@ -368,6 +368,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/thk-im/thk-im-base-server v0.0.0-20240102130158-f585b8a86afa h1:LE5Mkptkd/E8mWZBemVjQQhztBe5+nl69/OHj42sShk=
 github.com/thk-im/thk-im-base-server v0.0.0-20240102130158-f585b8a86afa/go.mod h1:TQaEvvwbtE/BFE6S/kj0MyZlSiq3Eej1nJn/ph9S1VU=
+github.com/thk-im/thk-im-msgapi-server v0.0.0-20240114123006-5bb0234fe264 h1:v5LPe+OSjMEFt4gNHGOo/q+RCAGxd7CwrODQ9zxMrZg=
+github.com/thk-im/thk-im-msgapi-server v0.0.0-20240114123006-5bb0234fe264/go.mod h1:Xrws/nZaQrP1owF/kWYDRKRFtnY8mxFaVDSwuVs+uGg=
 github.com/thk-im/thk-im-user-server v0.0.0-20240111144602-bd022e8b653b h1:N3XFEss8XvAoDHvejkm6cuO7QgQmHgvctC55/Gkczq8=
 github.com/thk-im/thk-im-user-server v0.0.0-20240111144602-bd022e8b653b/go.mod h1:v+JosidjD8tmVFmlYr/9tBzKcBiMUoeuV++7hul0iqY=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=

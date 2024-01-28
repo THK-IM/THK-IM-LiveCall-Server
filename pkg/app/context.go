@@ -8,6 +8,7 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
+	msgSdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
 	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
 )
 
@@ -45,6 +46,10 @@ func (c *Context) Init(config *conf.LiveCallConfig) {
 
 func (c *Context) UserApi() userSdk.UserApi {
 	return c.Context.SdkMap["user_api"].(userSdk.UserApi)
+}
+
+func (c *Context) MsgApi() msgSdk.MsgApi {
+	return c.Context.SdkMap["msg_api"].(msgSdk.MsgApi)
 }
 
 func (c *Context) StartServe() {

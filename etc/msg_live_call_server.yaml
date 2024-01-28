@@ -1,6 +1,6 @@
 Name: msg_live_call_server
 Host: 0.0.0.0
-Port: 28000
+Port: 30000
 Mode: debug
 # exposed外网暴露模式，校验用户token
 # backend后端模式，校验ip
@@ -9,7 +9,7 @@ IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
 Rtc:
   Timeout: 1000 #单位ms,要考虑gc时间
   NodeIp: 192.168.1.11 #公网ip
-  UdpPort: 33333 #公网端口
+  UdpPort: 30001 #公网端口
 Node:
   MaxCount: 1024
   PollingInterval: 15
@@ -31,6 +31,8 @@ Metric:
 Sdks:
   - Name: user_api
     Endpoint: "http://user-api.thkim.com:10000"
+  - Name: msg_api
+    Endpoint: "http://msg-api.thkim.com:20000"
 Cache:
   Cluster: Cluster
   RedisSource:

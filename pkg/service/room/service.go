@@ -51,8 +51,7 @@ func (r *ServiceImpl) NodePublicIp() string {
 }
 
 func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
-	id := fmt.Sprintf("%d_%d", (time.Now().UnixNano()%int64(time.Second))/int64(time.Second), req.UId)
-	r.logger.Info(time.Now().UnixNano(), ", ", int64(time.Second), ", ", id)
+	id := fmt.Sprintf("%d_%d", (time.Now().UnixNano())/int64(time.Second), req.UId)
 	room := &Room{
 		Id:         id,
 		Mode:       req.Mode,
@@ -96,6 +95,9 @@ func (r *ServiceImpl) JoinRoom(req *dto.RoomJoinReq) (*Room, error) {
 func (r *ServiceImpl) FindRoomById(id string) (*Room, error) {
 	value, err := r.cache.Get(r.getRoomCacheKey(id))
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	roomJson, ok := value.(string)

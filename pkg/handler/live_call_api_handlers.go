@@ -17,6 +17,7 @@ func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 	room.POST("", createRoom(appCtx))
 	room.GET("/:id", findRoomById(appCtx))
 	room.POST("/join", joinRoom(appCtx))
+	room.DELETE("", deleteRoom(appCtx))
 
 	stream := httpEngine.Group("/stream")
 	stream.POST("/publish", publishStream(appCtx, rtcService))
