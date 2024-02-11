@@ -168,7 +168,7 @@ func hangup(appCtx *app.Context) gin.HandlerFunc {
 		}
 
 		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
+		if err != nil || room == nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
@@ -222,7 +222,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 		}
 
 		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
+		if err != nil || room == nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
