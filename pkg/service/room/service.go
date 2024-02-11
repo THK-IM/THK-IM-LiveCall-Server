@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	baseErr "github.com/thk-im/thk-im-base-server/errorx"
+	"github.com/thk-im/thk-im-base-server/snowflake"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
 	"strconv"
@@ -20,6 +22,7 @@ const (
 
 type Service interface {
 	CreateRoom(*dto.RoomCreateReq) (*Room, error)
+	AddRoomMember(room *Room, ids []int64) error
 	FindRoomById(id string) (*Room, error)
 	DestroyRoom(id string) error
 	// NodePublicIp 所在节点公网ip地址
@@ -30,19 +33,18 @@ type Service interface {
 	OnParticipantLeave(roomId, streamKey string, uId int64) error
 }
 
-func NewService(
-	cache cache.Service,
-	logger *logrus.Entry,
-) Service {
+func NewService(node *snowflake.Node, cache cache.Service, logger *logrus.Entry) Service {
 	return &ServiceImpl{
 		logger: logger,
 		cache:  cache,
+		node:   node,
 	}
 }
 
 type ServiceImpl struct {
 	logger   *logrus.Entry
 	cache    cache.Service
+	node     *snowflake.Node
 	publicIp string
 }
 
@@ -51,11 +53,12 @@ func (r *ServiceImpl) NodePublicIp() string {
 }
 
 func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
-	id := fmt.Sprintf("%d_%d", (time.Now().UnixNano())/int64(time.Second), req.UId)
+	id := strconv.FormatInt(r.node.Generate().Int64(), 36)
 	room := &Room{
 		Id:         id,
 		Mode:       req.Mode,
 		OwnerId:    req.UId,
+		Members:    req.Members,
 		CreateTime: time.Now().UnixMilli(),
 	}
 	roomCacheKey := r.getRoomCacheKey(room.Id)
@@ -82,6 +85,19 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
 	}
 }
 
+func (r *ServiceImpl) AddRoomMember(room *Room, ids []int64) error {
+	roomCacheKey := r.getRoomCacheKey(room.Id)
+	for _, id := range ids {
+		room.Members = append(room.Members, id)
+	}
+	if jsonStr, err := room.Json(); err != nil {
+		return err
+	} else {
+		err = r.cache.SetEx(roomCacheKey, jsonStr, time.Hour*24)
+		return nil
+	}
+}
+
 func (r *ServiceImpl) JoinRoom(req *dto.RoomJoinReq) (*Room, error) {
 	room, err := r.FindRoomById(req.RoomId)
 	if err != nil {
@@ -102,7 +118,7 @@ func (r *ServiceImpl) FindRoomById(id string) (*Room, error) {
 	}
 	roomJson, ok := value.(string)
 	if !ok {
-		return nil, errors.New("InternalServerError")
+		return nil, baseErr.ErrInternalServerError
 	}
 	room, e := NewRoomByJson([]byte(roomJson))
 	if e != nil {

@@ -8,7 +8,7 @@ DeployMode: "backend"
 IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
 Rtc:
   Timeout: 1000 #单位ms,要考虑gc时间
-  NodeIp: 192.168.1.11 #公网ip
+  NodeIp: rtc-api.thkim.com #公网ip
   UdpPort: 30001 #公网端口
 Node:
   MaxCount: 1024
@@ -17,6 +17,7 @@ Logger:
   Dir: logs
   RetainAge: 720
   RotationAge: 1
+  ElasticEndpoint: ${ELASTIC_ENDPOINT}
 RedisSource:
   Endpoint: ${REDIS_ENDPOINT}
   Uri: "/0"

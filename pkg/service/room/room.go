@@ -15,6 +15,7 @@ type Room struct {
 	Mode         int            `json:"mode"`
 	OwnerId      int64          `json:"owner_id"`
 	CreateTime   int64          `json:"create_time"`
+	Members      []int64        `json:"members"`
 	Participants []*Participant `json:"participants,omitempty"`
 }
 
