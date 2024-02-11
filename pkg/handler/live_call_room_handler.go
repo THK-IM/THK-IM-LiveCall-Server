@@ -93,23 +93,18 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 
-		if len(room.Participants) > 0 {
-			members := make([]int64, 0)
-			for _, p := range room.Participants {
-				members = append(members, p.UId)
-			}
+		if len(room.Members) > 0 {
 			notify := &dto.LiveCallSignal{
 				RoomId:     room.Id,
 				OwnerId:    room.OwnerId,
 				Mode:       room.Mode,
 				CreateTime: room.CreateTime,
-				Members:    members,
+				Members:    room.Members,
 				MsgType:    dto.EndLiveCall,
 				OperatorId: req.UId,
 			}
-			notifyIds := members
 			pushMessage := &msgDto.PushMessageReq{
-				UIds:        notifyIds,
+				UIds:        room.Members,
 				Type:        PushMessageTypeLiveCall,
 				Body:        notify.JsonString(),
 				OfflinePush: true,
