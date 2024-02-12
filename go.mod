@@ -12,9 +12,9 @@ require (
 	github.com/pion/webrtc/v3 v3.2.24
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/thk-im/thk-im-base-server v0.0.0-20240207123504-c6ab26566db8
-	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240207124515-d110e9cb329c
-	github.com/thk-im/thk-im-user-server v0.0.0-20240207124312-6b06ca2182d6
+	github.com/thk-im/thk-im-base-server v0.0.0-20240212035921-225cfce0aff4
+	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240212085034-f746b41c329d
+	github.com/thk-im/thk-im-user-server v0.0.0-20240212084952-b4aa0c7246e0
 	github.com/zoumo/goset v0.2.0
 )
 
