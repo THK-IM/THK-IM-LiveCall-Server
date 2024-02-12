@@ -93,7 +93,7 @@ func (r serviceImpl) InitServer() {
 	})
 
 	r.appCtx.CacheService().Sub(NotifyClientRemoveStreamEventKey, func(msg string) {
-		r.logger.Infof("NotifyClientRemoveStreamEventKey")
+		r.logger.Info("NotifyClientRemoveStreamEventKey")
 		publishEvent := &PublishEvent{}
 		err := json.Unmarshal([]byte(msg), publishEvent)
 		if err != nil {
@@ -104,7 +104,7 @@ func (r serviceImpl) InitServer() {
 	})
 
 	r.appCtx.CacheService().Sub(DataChannelEventKey, func(msg string) {
-		r.logger.Error("CacheService Sub: ", DataChannelEventKey, " msg: ", msg)
+		r.logger.Info("CacheService Sub: ", DataChannelEventKey, " msg: ", msg)
 		event := &DataChannelEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
 			r.logger.Error("Sub: ", DataChannelEventKey, " err: ", err)
@@ -121,7 +121,7 @@ func (r serviceImpl) InitServer() {
 	})
 	// 停止房间内stream的消息监听
 	r.appCtx.CacheService().Sub(room.DestroyRoomEventKey, func(msg string) {
-		r.logger.Error("CacheService Sub: ", room.DestroyRoomEventKey, " msg: ", msg)
+		r.logger.Info("CacheService Sub: ", room.DestroyRoomEventKey, " msg: ", msg)
 		event := &room.DestroyRoomEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
 			r.logger.Error("Sub: ", room.DestroyRoomEventKey, " err: ", err)
@@ -219,6 +219,7 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 		if rm, errRoom := r.appCtx.RoomService().FindRoomById(roomId); errRoom == nil {
 			if rm != nil {
 				for _, p := range rm.Participants {
+					r.logger.Infof("notifyClientNewStream uId: %d p: %d, JoinTime: %d, requestJoinTime: %d, pusherJoinTime: %d", uId, p.UId, p.JoinTime, requestJoinTime, pusherJoinTime)
 					if p.JoinTime < pusherJoinTime && p.JoinTime > requestJoinTime {
 						event = &PublishEvent{
 							RoomId:    roomId,

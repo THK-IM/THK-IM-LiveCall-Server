@@ -160,6 +160,8 @@ func (c *Pusher) RemovePuller(key string) {
 }
 
 func (c *Pusher) Serve() {
+	c.peerConn.OnDataChannel(c.OnDataChannel)
+	c.peerConn.OnTrack(c.OnTrack)
 	c.peerConn.OnSignalingStateChange(func(state webrtc.SignalingState) {
 		c.logger.Infof("State Changed: Signal %s", state.String())
 	})
@@ -173,8 +175,7 @@ func (c *Pusher) Serve() {
 			c.Stop()
 		}
 		if state == webrtc.PeerConnectionStateConnected {
-			c.peerConn.OnDataChannel(c.OnDataChannel)
-			c.peerConn.OnTrack(c.OnTrack)
+
 		}
 	})
 }
@@ -185,7 +186,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 	}
 	d.OnOpen(func() {
 		c.dcMap[d.Label()] = d
-		c.logger.Info("Datachannel OnOpen: ", d.Label())
+		c.logger.Info("Datachannel OnOpen: ", d.Label(), c.uid)
 		if c.onDataChannelEvent != nil {
 			ordered := d.Ordered()
 			protocol := d.Protocol()
@@ -322,7 +323,6 @@ func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 						// 产生丢包，发送关键帧
 						if sts.InboundRTPStreamStats.PacketsLost != currentLost {
 							// c.logger.Infof("pusher write key frame, roomId: %s", c.roomId)
-							// c.WriteKeyFrame()
 							currentLost = sts.InboundRTPStreamStats.PacketsLost
 						}
 					}

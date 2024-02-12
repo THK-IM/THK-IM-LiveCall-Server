@@ -80,7 +80,7 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
 			return nil, err
 		}
 		requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.UId)
-		err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*5)
+		err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*30)
 		return room, err
 	}
 }
@@ -104,7 +104,7 @@ func (r *ServiceImpl) JoinRoom(req *dto.RoomJoinReq) (*Room, error) {
 		return nil, err
 	}
 	requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.UId)
-	err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*5)
+	err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*30)
 	return room, err
 }
 

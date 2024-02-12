@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	baseDto "github.com/thk-im/thk-im-base-server/dto"
@@ -145,8 +146,13 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("joinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
-			baseDto.ResponseSuccess(ctx, rsp)
+			if rsp == nil {
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s not found", req.UId, req.RoomId)
+				baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
+			} else {
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
+				baseDto.ResponseSuccess(ctx, rsp)
+			}
 		}
 	}
 }
@@ -168,10 +174,14 @@ func hangup(appCtx *app.Context) gin.HandlerFunc {
 		}
 
 		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil || room == nil {
+		if err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
+			if room == nil {
+				baseDto.ResponseSuccess(ctx, nil)
+				return
+			}
 			members := room.Members
 			newMembers := make([]int64, 0)
 			for _, m := range members {
@@ -222,10 +232,15 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 		}
 
 		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil || room == nil {
+		if err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
+			if room == nil {
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s not found", req.UId, req.RoomId)
+				baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
+				return
+			}
 			hasPermission := false
 			for _, p := range room.Members {
 				if p == req.UId {
