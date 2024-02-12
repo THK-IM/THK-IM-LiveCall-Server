@@ -367,9 +367,11 @@ func (c *Pusher) WriteKeyFrame() {
 			c.mutex.RLock()
 			conn := c.peerConn
 			if conn == nil {
+				c.mutex.RUnlock()
 				break
 			}
 			if conn.ConnectionState() > webrtc.PeerConnectionStateConnected {
+				c.mutex.RUnlock()
 				break
 			}
 			for k := range c.trackMap {
