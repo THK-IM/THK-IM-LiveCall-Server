@@ -247,6 +247,8 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 		} else {
 			r.logger.Errorf("errRoom, %s ", errRoom.Error())
 		}
+
+		pusher.WriteKeyFrame()
 	}
 
 }
@@ -282,15 +284,15 @@ func (r serviceImpl) OnPusherClosed(roomId, key, subKey string, uId int64) {
 }
 
 func (r serviceImpl) OnPullerConnected(roomId, _, subKey string, _ int64) {
-	r.rwMutex.RLock()
-	defer r.rwMutex.RUnlock()
-	pusherMap := r.roomPusherMap[roomId]
-	if pusherMap != nil {
-		pusher := pusherMap[subKey]
-		if pusher != nil {
-			go pusher.WriteKeyFrame()
-		}
-	}
+	// r.rwMutex.RLock()
+	// defer r.rwMutex.RUnlock()
+	// pusherMap := r.roomPusherMap[roomId]
+	// if pusherMap != nil {
+	// 	pusher := pusherMap[subKey]
+	// 	if pusher != nil {
+	// 		go pusher.WriteKeyFrame()
+	// 	}
+	// }
 }
 
 func (r serviceImpl) OnPullerClosed(roomId, key, subKey string, _ int64) {
