@@ -8,6 +8,7 @@ type Rtc struct {
 	Timeout int64  `yaml:"Timeout"`
 	NodeIp  string `yaml:"NodeIp"`
 	UdpPort int    `yaml:"UdpPort"`
+	TcpPort int    `yaml:"TcpPort"`
 }
 
 type ClickHouse struct {

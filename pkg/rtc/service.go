@@ -13,6 +13,7 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
+	"net"
 	"sync"
 	"time"
 )
@@ -447,17 +448,41 @@ type serviceImpl struct {
 
 func NewRtcService(source *conf.Rtc, appCtx *app.Context) Service {
 	settingEngine := webrtc.SettingEngine{}
-	mux, err := ice.NewMultiUDPMuxFromPort(source.UdpPort)
-	if err != nil {
-		panic(err)
+	if source.TcpPort > 0 {
+		// Enable support only for TCP ICE candidates.
+		settingEngine.SetNetworkTypes([]webrtc.NetworkType{
+			webrtc.NetworkTypeTCP4,
+			webrtc.NetworkTypeTCP6,
+		})
+		tcpListener, err := net.ListenTCP("tcp", &net.TCPAddr{
+			IP:   net.IP{0, 0, 0, 0},
+			Port: source.TcpPort,
+		})
+		if err != nil {
+			panic(err)
+		}
+		tcpMux := webrtc.NewICETCPMux(nil, tcpListener, 8*1024)
+		settingEngine.SetICETCPMux(tcpMux)
+		settingEngine.SetICETimeouts(
+			time.Duration(source.Timeout)*time.Millisecond,
+			time.Duration(source.Timeout)*time.Millisecond,
+			time.Duration(source.Timeout)*time.Millisecond,
+		)
+	} else if source.UdpPort > 0 {
+		mux, err := ice.NewMultiUDPMuxFromPort(source.UdpPort)
+		if err != nil {
+			panic(err)
+		}
+		settingEngine.SetICETimeouts(
+			time.Duration(source.Timeout)*time.Millisecond,
+			time.Duration(source.Timeout)*time.Millisecond,
+			time.Duration(source.Timeout)*time.Millisecond,
+		)
+		settingEngine.SetICEUDPMux(mux)
+		settingEngine.SetNAT1To1IPs([]string{source.NodeIp}, webrtc.ICECandidateTypeHost)
+	} else {
+		panic(errors.New("error rtc"))
 	}
-	settingEngine.SetICETimeouts(
-		time.Duration(source.Timeout)*time.Millisecond,
-		time.Duration(source.Timeout)*time.Millisecond,
-		time.Duration(source.Timeout)*time.Millisecond,
-	)
-	settingEngine.SetICEUDPMux(mux)
-	settingEngine.SetNAT1To1IPs([]string{source.NodeIp}, webrtc.ICECandidateTypeHost)
 
 	logEntry := appCtx.Logger().WithField("search_index", "RtcService")
 	return &serviceImpl{
