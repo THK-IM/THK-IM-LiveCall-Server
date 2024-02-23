@@ -28,12 +28,11 @@ type Puller struct {
 	statService     stat.Service
 	onConnClosed    onConnClosed
 	onConnConnected onConnConnected
-	writeKeyFrame   writeKeyFrame
 }
 
 func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid int64, roomId, subKey, offerSdp string,
 	trackMap map[string]*webrtc.TrackLocalStaticRTP, statService stat.Service,
-	onConnConnected onConnConnected, onConnClosed onConnClosed, writeKeyFrame writeKeyFrame) (*Puller, error) {
+	onConnConnected onConnConnected, onConnClosed onConnClosed) (*Puller, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
@@ -113,7 +112,6 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 		onConnClosed:    onConnClosed,
 		onConnConnected: onConnConnected,
 		statService:     statService,
-		writeKeyFrame:   writeKeyFrame,
 	}, nil
 }
 

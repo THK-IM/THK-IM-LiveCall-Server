@@ -381,7 +381,7 @@ func (r serviceImpl) play(roomId, subStreamKey, offerSdp string, uid int64) (*Pu
 	}
 	puller, err := MakePuller(
 		r.settingEngine, r.logger, uid, roomId, subStreamKey, offerSdp,
-		trackMap, r.appCtx.StatService(), r.OnPullerConnected, r.OnPullerClosed, r.WriteKeyFrame,
+		trackMap, r.appCtx.StatService(), r.OnPullerConnected, r.OnPullerClosed,
 	)
 	if err != nil {
 		return nil, err
