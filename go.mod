@@ -10,11 +10,11 @@ require (
 	github.com/pion/interceptor v0.1.25
 	github.com/pion/rtcp v1.2.13
 	github.com/pion/webrtc/v3 v3.2.24
-	github.com/redis/go-redis/v9 v9.4.0
+	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/thk-im/thk-im-base-server v0.0.0-20240212035921-225cfce0aff4
-	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240212085034-f746b41c329d
-	github.com/thk-im/thk-im-user-server v0.0.0-20240212084952-b4aa0c7246e0
+	github.com/thk-im/thk-im-base-server v0.0.0-20240302052742-d05396b5ff67
+	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240302053900-11f932af7fbe
+	github.com/thk-im/thk-im-user-server v0.0.0-20240302053004-f63fb5180112
 	github.com/zoumo/goset v0.2.0
 )
 
@@ -113,5 +113,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.2 // indirect
-	gorm.io/gorm v1.25.6 // indirect
+	gorm.io/gorm v1.25.7 // indirect
 )
