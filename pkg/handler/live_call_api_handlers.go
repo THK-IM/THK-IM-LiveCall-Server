@@ -9,8 +9,8 @@ import (
 func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 
 	httpEngine := appCtx.HttpEngine()
-	userApi := appCtx.UserApi()
-	userTokenAuth := userSdk.UserTokenAuth(userApi, appCtx.Logger())
+	loginApi := appCtx.LoginApi()
+	userTokenAuth := userSdk.UserTokenAuth(loginApi, appCtx.Logger())
 	httpEngine.Use(userTokenAuth)
 
 	room := httpEngine.Group("/room")

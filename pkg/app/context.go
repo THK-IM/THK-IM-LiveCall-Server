@@ -44,8 +44,8 @@ func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.cacheService = cacheService
 }
 
-func (c *Context) UserApi() userSdk.UserApi {
-	return c.Context.SdkMap["user_api"].(userSdk.UserApi)
+func (c *Context) LoginApi() userSdk.LoginApi {
+	return c.Context.SdkMap["login_api"].(userSdk.LoginApi)
 }
 
 func (c *Context) MsgApi() msgSdk.MsgApi {
