@@ -12,9 +12,9 @@ require (
 	github.com/pion/webrtc/v3 v3.2.24
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/thk-im/thk-im-base-server v0.0.0-20240308132713-84205d6f8fd8
-	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240308145826-8b27b4307148
-	github.com/thk-im/thk-im-user-server v0.0.0-20240308140104-03dd443715eb
+	github.com/thk-im/thk-im-base-server v0.0.0-20240329115557-05888130b981
+	github.com/thk-im/thk-im-msgapi-server v0.0.0-20240329143121-752bfa32ee16
+	github.com/thk-im/thk-im-user-server v0.0.0-20240331125412-5ba50865d126
 	github.com/zoumo/goset v0.2.0
 )
 
@@ -44,6 +44,7 @@ require (
 	github.com/go-resty/resty/v2 v2.11.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/hashicorp/consul/api v1.27.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

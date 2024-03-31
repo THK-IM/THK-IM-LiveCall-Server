@@ -5,6 +5,8 @@ Mode: debug
 # exposed外网暴露模式，校验用户token
 # backend后端模式，校验ip
 DeployMode: "backend"
+BodyCipher: 1234123412341234
+BodyCipherIV: 0000000000000000
 IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
 Rtc:
   Timeout: 5000 #单位ms,要考虑gc时间
