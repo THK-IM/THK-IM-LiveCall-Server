@@ -157,25 +157,25 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 	}
 }
 
-func hangup(appCtx *app.Context) gin.HandlerFunc {
+func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RefuseJoinRoomReq{}
 		if err := ctx.BindJSON(req); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %s", err.Error())
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %s", err.Error())
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
 		requestUid := ctx.GetInt64(userSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %d %v", requestUid, req)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %d %v", requestUid, req)
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
 
 		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
 		if err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %v %s", req, err.Error())
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
 			if room == nil {
@@ -205,10 +205,10 @@ func hangup(appCtx *app.Context) gin.HandlerFunc {
 				OfflinePush: true,
 			}
 			if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("hangup %v %s", pushMessage, errPush.Error())
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %v %s", pushMessage, errPush.Error())
 				baseDto.ResponseInternalServerError(ctx, errPush)
 			} else {
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("hangup %v %v", pushMessage, resp)
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("refuseJoinRoom %v %v", pushMessage, resp)
 				baseDto.ResponseSuccess(ctx, nil)
 			}
 		}
