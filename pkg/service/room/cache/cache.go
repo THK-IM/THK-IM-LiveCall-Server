@@ -4,7 +4,7 @@ import "time"
 
 type OnNewMessage func(msg string)
 
-type Service interface {
+type RoomCache interface {
 	SetEx(key string, value interface{}, expire time.Duration) error
 	Expire(key string, expire time.Duration) error
 	Get(key string) (value interface{}, err error)

@@ -275,7 +275,7 @@ func (l *LocalCache) Del(key string) error {
 	return nil
 }
 
-func MakeLocalCache(logger *logrus.Entry) Service {
+func MakeLocalCache(logger *logrus.Entry) RoomCache {
 	cache := &LocalCache{
 		logger:    logger.WithField("search_index", "local_cache"),
 		data:      make(map[string]interface{}),

@@ -39,7 +39,7 @@ type Service interface {
 }
 
 func (r serviceImpl) InitServer() {
-	r.appCtx.CacheService().Sub(RequestSubscribeEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(RequestSubscribeEventKey, func(msg string) {
 		req := &RequestSubscribeEvent{}
 		if err := json.Unmarshal([]byte(msg), req); err != nil {
 			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", err)
@@ -64,12 +64,12 @@ func (r serviceImpl) InitServer() {
 		if ef != nil {
 			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", err)
 		}
-		err = r.appCtx.CacheService().Pub(ResponseSubscribeEventKey, string(s))
+		err = r.appCtx.RoomCache().Pub(ResponseSubscribeEventKey, string(s))
 		if err != nil {
 			r.logger.Error("Pub: ", ResponseSubscribeEventKey, " err: ", err)
 		}
 	})
-	r.appCtx.CacheService().Sub(ResponseSubscribeEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(ResponseSubscribeEventKey, func(msg string) {
 		pullRespEvent := &ResponseSubscribeEvent{}
 		err := json.Unmarshal([]byte(msg), pullRespEvent)
 		if err != nil {
@@ -82,7 +82,7 @@ func (r serviceImpl) InitServer() {
 		}
 	})
 
-	r.appCtx.CacheService().Sub(NotifyClientNewStreamEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(NotifyClientNewStreamEventKey, func(msg string) {
 		r.logger.Infof("NewStream:%s", msg)
 		publishEvent := &PublishEvent{}
 		err := json.Unmarshal([]byte(msg), publishEvent)
@@ -93,7 +93,7 @@ func (r serviceImpl) InitServer() {
 		r.notifyClientNewStream(msg, publishEvent)
 	})
 
-	r.appCtx.CacheService().Sub(NotifyClientRemoveStreamEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(NotifyClientRemoveStreamEventKey, func(msg string) {
 		r.logger.Info("NotifyClientRemoveStreamEventKey")
 		publishEvent := &PublishEvent{}
 		err := json.Unmarshal([]byte(msg), publishEvent)
@@ -104,7 +104,7 @@ func (r serviceImpl) InitServer() {
 		r.notifyClientRemoveStream(msg, publishEvent)
 	})
 
-	r.appCtx.CacheService().Sub(DataChannelEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(DataChannelEventKey, func(msg string) {
 		r.logger.Info("CacheService Sub: ", DataChannelEventKey, " msg: ", msg)
 		event := &DataChannelEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
@@ -121,7 +121,7 @@ func (r serviceImpl) InitServer() {
 		}
 	})
 	// 停止房间内stream的消息监听
-	r.appCtx.CacheService().Sub(room.DestroyRoomEventKey, func(msg string) {
+	r.appCtx.RoomCache().Sub(room.DestroyRoomEventKey, func(msg string) {
 		r.logger.Info("CacheService Sub: ", room.DestroyRoomEventKey, " msg: ", msg)
 		event := &room.DestroyRoomEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
@@ -198,7 +198,7 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 
 		// 需要通知所有节点的Pushers, 通过Pusher的DataChannel将流新增事件通知到客户端
 		if js, e := json.Marshal(event); e == nil {
-			if e = r.appCtx.CacheService().Pub(NotifyClientNewStreamEventKey, string(js)); e != nil {
+			if e = r.appCtx.RoomCache().Pub(NotifyClientNewStreamEventKey, string(js)); e != nil {
 				r.logger.Error("OnPusherConnected: ", roomId, uId, key, subKey, e)
 			}
 		} else {
@@ -271,7 +271,7 @@ func (r serviceImpl) OnPusherClosed(roomId, key, subKey string, uId int64) {
 		StreamKey: key,
 	}
 	if js, e := json.Marshal(event); e == nil {
-		if e = r.appCtx.CacheService().Pub(NotifyClientRemoveStreamEventKey, string(js)); e != nil {
+		if e = r.appCtx.RoomCache().Pub(NotifyClientRemoveStreamEventKey, string(js)); e != nil {
 			r.logger.Error("OnPusherClosed: ", roomId, uId, key, subKey, e)
 		}
 	} else {
@@ -353,7 +353,7 @@ func (r serviceImpl) RequestPlay(req *dto.PlayReq) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	err = r.appCtx.CacheService().Pub(RequestSubscribeEventKey, string(msg))
+	err = r.appCtx.RoomCache().Pub(RequestSubscribeEventKey, string(msg))
 	if err != nil {
 		return "", "", err
 	}
@@ -399,7 +399,7 @@ func (r serviceImpl) onDataChannelEvent(event *DataChannelEvent) {
 	} else {
 		content := string(d)
 		// DataChannel事件发送到所有的节点
-		if err = r.appCtx.CacheService().Pub(DataChannelEventKey, content); err != nil {
+		if err = r.appCtx.RoomCache().Pub(DataChannelEventKey, content); err != nil {
 			r.logger.Error("onDataChannelEvent, ", err)
 		}
 	}

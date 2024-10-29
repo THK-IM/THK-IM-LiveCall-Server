@@ -142,7 +142,7 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		if rsp, err := appCtx.RoomService().JoinRoom(req); err != nil {
+		if rsp, err := appCtx.RoomService().RequestJoinRoom(req); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("joinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
@@ -252,7 +252,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 				appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v", req)
 				baseDto.ResponseForbidden(ctx)
 			}
-			err = appCtx.RoomService().AddRoomMember(room, req.InviteUIds)
+			err = appCtx.RoomService().InviteRoomMember(room, req.InviteUIds)
 			if err != nil {
 				baseDto.ResponseInternalServerError(ctx, err)
 			}

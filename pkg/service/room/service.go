@@ -9,7 +9,7 @@ import (
 	baseErr "github.com/thk-im/thk-im-base-server/errorx"
 	"github.com/thk-im/thk-im-base-server/snowflake"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
+	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/cache"
 	"strconv"
 	"time"
 )
@@ -21,19 +21,27 @@ const (
 )
 
 type Service interface {
+	// CreateRoom 创建房间
 	CreateRoom(*dto.RoomCreateReq) (*Room, error)
-	AddRoomMember(room *Room, ids []int64) error
+	// InviteRoomMember 邀请用户加入房间
+	InviteRoomMember(room *Room, ids []int64) error
+	// FindRoomById 通过id查询房间信息
 	FindRoomById(id string) (*Room, error)
+	// DestroyRoom  通过id销毁房间
 	DestroyRoom(id string) error
 	// NodePublicIp 所在节点公网ip地址
 	NodePublicIp() string
-	JoinRoom(req *dto.RoomJoinReq) (*Room, error)
+	// RequestJoinRoom 请求加入房间
+	RequestJoinRoom(req *dto.RoomJoinReq) (*Room, error)
+	// GetRequestJoinRoomTime 获取用户请求加入房间的时间戳
 	GetRequestJoinRoomTime(roomId string, uId int64) (int64, error)
+	// OnParticipantJoin 房间参与人加入房间回调
 	OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error
+	// OnParticipantLeave 房间参与人离开房间回调
 	OnParticipantLeave(roomId, streamKey string, uId int64) error
 }
 
-func NewService(node *snowflake.Node, cache cache.Service, logger *logrus.Entry) Service {
+func NewService(node *snowflake.Node, cache cache.RoomCache, logger *logrus.Entry) Service {
 	return &ServiceImpl{
 		logger: logger,
 		cache:  cache,
@@ -43,7 +51,7 @@ func NewService(node *snowflake.Node, cache cache.Service, logger *logrus.Entry)
 
 type ServiceImpl struct {
 	logger   *logrus.Entry
-	cache    cache.Service
+	cache    cache.RoomCache
 	node     *snowflake.Node
 	publicIp string
 }
@@ -85,7 +93,7 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*Room, error) {
 	}
 }
 
-func (r *ServiceImpl) AddRoomMember(room *Room, ids []int64) error {
+func (r *ServiceImpl) InviteRoomMember(room *Room, ids []int64) error {
 	roomCacheKey := r.getRoomCacheKey(room.Id)
 	for _, id := range ids {
 		room.Members = append(room.Members, id)
@@ -98,7 +106,7 @@ func (r *ServiceImpl) AddRoomMember(room *Room, ids []int64) error {
 	}
 }
 
-func (r *ServiceImpl) JoinRoom(req *dto.RoomJoinReq) (*Room, error) {
+func (r *ServiceImpl) RequestJoinRoom(req *dto.RoomJoinReq) (*Room, error) {
 	room, err := r.FindRoomById(req.RoomId)
 	if err != nil {
 		return nil, err

@@ -120,7 +120,7 @@ func (r *RedisCache) Del(key string) error {
 	return r.client.Del(ctx, key).Err()
 }
 
-func MakeRedisCache(client *redis.Client, logger *logrus.Entry) Service {
+func MakeRedisCache(client *redis.Client, logger *logrus.Entry) RoomCache {
 	return &RedisCache{
 		client:    client,
 		logger:    logger.WithField("search_index", "redis_cache"),

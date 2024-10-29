@@ -7,10 +7,10 @@ import (
 	baseConf "github.com/thk-im/thk-im-base-server/conf"
 	baseLoader "github.com/thk-im/thk-im-base-server/loader"
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/cache"
+	cache "github.com/thk-im/thk-im-livecall-server/pkg/service/room/cache"
 )
 
-func LoadCacheService(source *conf.Cache, logger *logrus.Entry) cache.Service {
+func LoadRoomCache(source *conf.Cache, logger *logrus.Entry) cache.RoomCache {
 	if source.Cluster == "Standalone" {
 		return cache.MakeLocalCache(logger)
 	} else if source.Cluster == "Cluster" {
