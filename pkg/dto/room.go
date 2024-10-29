@@ -35,5 +35,6 @@ type (
 		InviteUIds []int64 `json:"invite_u_ids"`
 		RoomId     string  `json:"room_id"`
 		Msg        string  `json:"msg"`
+		Duration   int64   `json:"duration"` // 单位s
 	}
 )

@@ -280,7 +280,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			}
 			signal := dto.MakeBeingRequestedSignal(
 				room.Id, room.Members, room.Mode, req.Msg, req.UId, room.CreateTime,
-				room.CreateTime+30*int64(time.Second),
+				room.CreateTime+req.Duration*int64(time.Second),
 			)
 			pushMessage := &msgDto.PushMessageReq{
 				UIds:        room.Members,
