@@ -2,14 +2,29 @@ package rtc
 
 import "encoding/json"
 
+const (
+	NotifyTypeNewStream    = "NewStream"
+	NotifyTypeRemoveStream = "RemoveStream"
+	NotifyTypeDataMsg      = "DataChannelMsg"
+)
+
+// Notify 下发给客户端的通知结构
 type Notify struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
 }
 
+// PublishEvent 流发布事件结构 房间有流加入/退出触发，下发给客户端
+type PublishEvent struct {
+	RoomId    string `json:"room_id"`    // 房间id
+	StreamKey string `json:"stream_key"` // 流key
+	UId       int64  `json:"u_id"`       // 用户id
+	Role      int    `json:"role"`       // 角色
+}
+
 func NewStreamNotify(msg string) *string {
 	notify := &Notify{
-		Type:    "NewStream",
+		Type:    NotifyTypeNewStream,
 		Message: msg,
 	}
 	if js, err := json.Marshal(notify); err != nil {
@@ -22,7 +37,7 @@ func NewStreamNotify(msg string) *string {
 
 func RemoveStreamNotify(msg string) *string {
 	notify := &Notify{
-		Type:    "RemoveStream",
+		Type:    NotifyTypeRemoveStream,
 		Message: msg,
 	}
 	if js, err := json.Marshal(notify); err != nil {
@@ -35,7 +50,7 @@ func RemoveStreamNotify(msg string) *string {
 
 func DataChanelMsg(msg string) *string {
 	notify := &Notify{
-		Type:    "DataChannelMsg",
+		Type:    NotifyTypeDataMsg,
 		Message: msg,
 	}
 	if js, err := json.Marshal(notify); err != nil {

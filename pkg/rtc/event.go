@@ -5,6 +5,7 @@ import (
 )
 
 const (
+	// RequestSubscribeEventKey 请求订阅事件
 	RequestSubscribeEventKey  = "RequestSubscribeEvent"
 	ResponseSubscribeEventKey = "ResponseSubscribeEvent"
 
@@ -19,39 +20,35 @@ const (
 	DataChannelCloseEvent = "DataChannelCloseEvent"
 )
 
+// RequestSubscribeEvent 请求订阅事件结构
 type RequestSubscribeEvent struct {
-	RoomId    string `json:"room_id"`
-	OfferSdp  string `json:"offer_sdp"`
-	StreamKey string `json:"stream_key"`
-	Uid       int64  `json:"uid"`
+	RoomId    string `json:"room_id"`    // 房间id
+	OfferSdp  string `json:"offer_sdp"`  // rtc建立连接sdp
+	StreamKey string `json:"stream_key"` // 需要订阅的流key
+	Uid       int64  `json:"uid"`        // 用户id
 }
 
+// ResponseSubscribeEvent 响应订阅事件结构
 type ResponseSubscribeEvent struct {
-	Answer    string `json:"answer"`
-	StreamKey string `json:"stream_key"`
-	Uid       int64  `json:"uid"`
+	Answer    string `json:"answer"`     // rtc建立连接的answer
+	StreamKey string `json:"stream_key"` // 流key
+	Uid       int64  `json:"uid"`        // 用户id
 }
 
-type PublishEvent struct {
-	RoomId    string `json:"room_id"`
-	StreamKey string `json:"stream_key"`
-	UId       int64  `json:"u_id"`
-	Role      int    `json:"role"`
-}
-
+// DataChannelEvent 数据通道事件结构
 type DataChannelEvent struct {
-	StreamKey string                     `json:"stream_key"`
-	Label     string                     `json:"label"`
-	RoomId    string                     `json:"room_id"`
-	UId       int64                      `json:"u_id"`
-	EventType string                     `json:"event_type"` // open/close/msg
-	Message   *webrtc.DataChannelMessage `json:"message"`
-	Channel   *webrtc.DataChannelInit    `json:"channel"`
+	StreamKey string                     `json:"stream_key"` // 流key
+	Label     string                     `json:"label"`      // 标签
+	RoomId    string                     `json:"room_id"`    // 房间id
+	Uid       int64                      `json:"uid"`        // 用户id
+	EventType string                     `json:"event_type"` // 事件类型，打开/关闭/发送消息:open/close/msg
+	Message   *webrtc.DataChannelMessage `json:"message"`    // 消息内容
+	Channel   *webrtc.DataChannelInit    `json:"channel"`    // 数据通道参数
 }
 
-type RoomPusherEvent struct {
-	Type       string `json:"type"`
-	RoomId     string `json:"room_id"`
-	PublishKey string `json:"publish_key"`
-	Uid        int64  `json:"uid"`
-}
+//type RoomPusherEvent struct {
+//	Type       string `json:"type"`
+//	RoomId     string `json:"room_id"`
+//	PublishKey string `json:"publish_key"`
+//	Uid        int64  `json:"uid"`
+//}

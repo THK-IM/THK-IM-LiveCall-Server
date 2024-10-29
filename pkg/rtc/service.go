@@ -60,11 +60,11 @@ func (r serviceImpl) InitServer() {
 			StreamKey: req.StreamKey,
 			Uid:       req.Uid,
 		}
-		s, ef := json.Marshal(pullRespEvent)
-		if ef != nil {
-			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", err)
+		eventJson, errJson := json.Marshal(pullRespEvent)
+		if errJson != nil {
+			r.logger.Error("Sub: ", ResponseSubscribeEventKey, " err: ", errJson)
 		}
-		err = r.appCtx.RoomCache().Pub(ResponseSubscribeEventKey, string(s))
+		err = r.appCtx.RoomCache().Pub(ResponseSubscribeEventKey, string(eventJson))
 		if err != nil {
 			r.logger.Error("Pub: ", ResponseSubscribeEventKey, " err: ", err)
 		}
@@ -76,14 +76,13 @@ func (r serviceImpl) InitServer() {
 			r.logger.Error(err)
 			return
 		}
-		key := fmt.Sprintf(SubscribeStreamKey, pullRespEvent.StreamKey, pullRespEvent.Uid)
+		key := r.userSubscribeStreamKey(pullRespEvent.StreamKey, pullRespEvent.Uid)
 		if f := r.onPullRequestEvent[key]; f != nil {
 			f(pullRespEvent)
 		}
 	})
 
 	r.appCtx.RoomCache().Sub(NotifyClientNewStreamEventKey, func(msg string) {
-		r.logger.Infof("NewStream:%s", msg)
 		publishEvent := &PublishEvent{}
 		err := json.Unmarshal([]byte(msg), publishEvent)
 		if err != nil {
@@ -94,7 +93,6 @@ func (r serviceImpl) InitServer() {
 	})
 
 	r.appCtx.RoomCache().Sub(NotifyClientRemoveStreamEventKey, func(msg string) {
-		r.logger.Info("NotifyClientRemoveStreamEventKey")
 		publishEvent := &PublishEvent{}
 		err := json.Unmarshal([]byte(msg), publishEvent)
 		if err != nil {
@@ -105,7 +103,6 @@ func (r serviceImpl) InitServer() {
 	})
 
 	r.appCtx.RoomCache().Sub(DataChannelEventKey, func(msg string) {
-		r.logger.Info("CacheService Sub: ", DataChannelEventKey, " msg: ", msg)
 		event := &DataChannelEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
 			r.logger.Error("Sub: ", DataChannelEventKey, " err: ", err)
@@ -319,27 +316,26 @@ func (r serviceImpl) getPusher(roomId, publishKey string) (*Pusher, error) {
 }
 
 func (r serviceImpl) RequestPlay(req *dto.PlayReq) (string, string, error) {
-	_room, _ := r.appCtx.RoomService().FindRoomById(req.RoomId)
-	if _room == nil {
+	rm, _ := r.appCtx.RoomService().FindRoomById(req.RoomId)
+	if rm == nil {
 		return "", "", errors.New("room is not existed")
 	}
-	if _room.Mode == room.ModeChat {
+	if rm.Mode == room.ModeChat {
 		return "", "", errors.New("no stream pull")
 	}
-	if _room.Mode != room.ModeAudio && _room.Mode != room.ModeVideo && _room.Mode != room.ModeVoiceRoom {
+	if rm.Mode != room.ModeAudio && rm.Mode != room.ModeVideo && rm.Mode != room.ModeVoiceRoom {
 		return "", "", errors.New("mode error")
 	}
 	answerSdp := ""
 	quit := make(chan bool)
 	eventFunc := func(resp *ResponseSubscribeEvent) {
-		if resp.Uid == req.UId &&
-			resp.StreamKey == req.StreamKey {
+		if resp.Uid == req.UId && resp.StreamKey == req.StreamKey {
 			answerSdp = resp.Answer
 			common.SafeOnceWrite(quit, true)
 		}
 	}
 
-	key := fmt.Sprintf(SubscribeStreamKey, req.StreamKey, req.UId)
+	key := r.userSubscribeStreamKey(req.StreamKey, req.UId)
 	r.onPullRequestEvent[key] = eventFunc
 	defer delete(r.onPullRequestEvent, key)
 
@@ -435,6 +431,10 @@ func (r serviceImpl) WriteKeyFrame(roomId string, subKey string) {
 		return
 	}
 	pusher.WriteKeyFrame()
+}
+
+func (r serviceImpl) userSubscribeStreamKey(streamKey string, uId int64) string {
+	return fmt.Sprintf(SubscribeStreamKey, streamKey, uId)
 }
 
 type serviceImpl struct {

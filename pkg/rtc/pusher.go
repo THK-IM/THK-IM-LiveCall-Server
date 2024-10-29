@@ -195,7 +195,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 				StreamKey: c.key,
 				Label:     d.Label(),
 				RoomId:    c.roomId,
-				UId:       c.uid,
+				Uid:       c.uid,
 				EventType: DataChannelNewEvent,
 				Channel: &webrtc.DataChannelInit{
 					Ordered:           &ordered,
@@ -216,7 +216,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 				StreamKey: c.key,
 				Label:     d.Label(),
 				RoomId:    c.roomId,
-				UId:       c.uid,
+				Uid:       c.uid,
 				EventType: DataChannelMsgEvent,
 				Message:   &msg,
 			}
@@ -230,7 +230,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 				StreamKey: c.key,
 				Label:     d.Label(),
 				RoomId:    c.roomId,
-				UId:       c.uid,
+				Uid:       c.uid,
 				EventType: DataChannelCloseEvent,
 			}
 			c.dcMap[event.Label] = d
