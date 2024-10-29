@@ -7,6 +7,13 @@ type (
 		Members []int64 `json:"members"`
 	}
 
+	RoomCallReq struct {
+		UId      int64  `json:"u_id"`
+		RoomId   string `json:"room_id"`
+		Msg      string `json:"msg"`
+		Duration int64  `json:"duration"` // 单位s
+	}
+
 	RoomDelReq struct {
 		UId    int64  `json:"u_id"`
 		RoomId string `json:"room_id"`
@@ -27,5 +34,6 @@ type (
 		UId        int64   `json:"u_id"`
 		InviteUIds []int64 `json:"invite_u_ids"`
 		RoomId     string  `json:"room_id"`
+		Msg        string  `json:"msg"`
 	}
 )
