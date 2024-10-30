@@ -182,7 +182,7 @@ func MakeKickMemberSignal(roomId string, msg string, uId, kickTime int64, kickId
 	if err != nil {
 		return nil
 	}
-	return &LiveCallSignal{Type: EndCall, Body: string(signalJson)}
+	return &LiveCallSignal{Type: KickMember, Body: string(signalJson)}
 }
 
 func (l LiveCallSignal) JsonString() string {
