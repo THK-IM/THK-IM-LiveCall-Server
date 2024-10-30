@@ -75,10 +75,11 @@ type (
 	}
 
 	KickMemberSignal struct {
-		RoomId   string `json:"room_id"`
-		UId      int64  `json:"u_id"`
-		Msg      string `json:"msg"`
-		KickTime int64  `json:"kick_time"`
+		RoomId   string  `json:"room_id"`
+		UId      int64   `json:"u_id"`
+		KickIds  []int64 `json:"kick_ids"`
+		Msg      string  `json:"msg"`
+		KickTime int64   `json:"kick_time"`
 	}
 )
 
@@ -169,12 +170,13 @@ func MakeEndCallSignal(roomId string, msg string, uId, endCallTime int64) *LiveC
 	return &LiveCallSignal{Type: EndCall, Body: string(signalJson)}
 }
 
-func MakeKickMemberSignal(roomId string, msg string, uId, kickTime int64) *LiveCallSignal {
+func MakeKickMemberSignal(roomId string, msg string, uId, kickTime int64, kickIds []int64) *LiveCallSignal {
 	signal := &KickMemberSignal{
 		RoomId:   roomId,
 		UId:      uId,
 		Msg:      msg,
 		KickTime: kickTime,
+		KickIds:  kickIds,
 	}
 	signalJson, err := json.Marshal(signal)
 	if err != nil {

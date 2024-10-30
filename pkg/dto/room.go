@@ -40,9 +40,9 @@ type (
 	}
 
 	KickoffMemberReq struct {
-		UId        int64  `json:"u_id"`
-		RoomId     string `json:"room_id"`
-		Msg        string `json:"msg"`
-		KickoffUId int64  `json:"kickoff_u_id"`
+		UId         int64   `json:"u_id"`
+		RoomId      string  `json:"room_id"`
+		Msg         string  `json:"msg"`
+		KickoffUIds []int64 `json:"kickoff_u_ids"`
 	}
 )

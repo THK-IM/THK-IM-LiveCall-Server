@@ -320,7 +320,7 @@ func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			members = append(members, p.UId)
 		}
 		signal := dto.MakeKickMemberSignal(
-			room.Id, req.Msg, req.KickoffUId, time.Now().UnixMilli(),
+			room.Id, req.Msg, req.UId, time.Now().UnixMilli(), req.KickoffUIds,
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        members,
