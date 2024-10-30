@@ -19,6 +19,8 @@ const (
 	Hangup = 5
 	// EndCall 结束通话
 	EndCall = 6
+	// KickMember 踢出通话成员
+	KickMember = 7
 )
 
 type (
@@ -70,6 +72,13 @@ type (
 		UId         int64  `json:"u_id"`
 		Msg         string `json:"msg"`
 		EndCallTime int64  `json:"end_call_time"`
+	}
+
+	KickMemberSignal struct {
+		RoomId   string `json:"room_id"`
+		UId      int64  `json:"u_id"`
+		Msg      string `json:"msg"`
+		KickTime int64  `json:"kick_time"`
 	}
 )
 
@@ -152,6 +161,20 @@ func MakeEndCallSignal(roomId string, msg string, uId, endCallTime int64) *LiveC
 		UId:         uId,
 		Msg:         msg,
 		EndCallTime: endCallTime,
+	}
+	signalJson, err := json.Marshal(signal)
+	if err != nil {
+		return nil
+	}
+	return &LiveCallSignal{Type: EndCall, Body: string(signalJson)}
+}
+
+func MakeKickMemberSignal(roomId string, msg string, uId, kickTime int64) *LiveCallSignal {
+	signal := &KickMemberSignal{
+		RoomId:   roomId,
+		UId:      uId,
+		Msg:      msg,
+		KickTime: kickTime,
 	}
 	signalJson, err := json.Marshal(signal)
 	if err != nil {

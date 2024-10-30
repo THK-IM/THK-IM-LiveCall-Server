@@ -2,16 +2,16 @@ package dto
 
 type (
 	RoomCreateReq struct {
-		UId     int64   `json:"u_id"`
-		Mode    int     `json:"mode"`
-		Members []int64 `json:"members"`
+		UId  int64 `json:"u_id"`
+		Mode int   `json:"mode"`
 	}
 
 	RoomCallReq struct {
-		UId      int64  `json:"u_id"`
-		RoomId   string `json:"room_id"`
-		Msg      string `json:"msg"`
-		Duration int64  `json:"duration"` // 单位s
+		UId      int64   `json:"u_id"`
+		RoomId   string  `json:"room_id"`
+		Msg      string  `json:"msg"`
+		Members  []int64 `json:"members"`
+		Duration int64   `json:"duration"` // 单位s
 	}
 
 	RoomDelReq struct {
@@ -28,6 +28,7 @@ type (
 	RefuseJoinRoomReq struct {
 		UId    int64  `json:"u_id"`
 		RoomId string `json:"room_id"`
+		Msg    string `json:"msg"`
 	}
 
 	InviteJoinRoomReq struct {
@@ -36,5 +37,12 @@ type (
 		RoomId     string  `json:"room_id"`
 		Msg        string  `json:"msg"`
 		Duration   int64   `json:"duration"` // 单位s
+	}
+
+	KickoffMemberReq struct {
+		UId        int64  `json:"u_id"`
+		RoomId     string `json:"room_id"`
+		Msg        string `json:"msg"`
+		KickoffUId int64  `json:"kickoff_u_id"`
 	}
 )

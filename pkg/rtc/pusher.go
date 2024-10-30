@@ -8,7 +8,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 	"github.com/sirupsen/logrus"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
+	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/model"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
 	"io"
 	"strconv"
@@ -68,7 +68,7 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 	if err != nil {
 		return nil, err
 	}
-	if roomMode == room.ModeVideo {
+	if roomMode == model.ModeVideo {
 		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
 			_ = pc.Close()
 			return nil, err
@@ -77,12 +77,12 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 			_ = pc.Close()
 			return nil, err
 		}
-	} else if roomMode == room.ModeAudio || roomMode == room.ModeVoiceRoom {
+	} else if roomMode == model.ModeAudio || roomMode == model.ModeVoiceRoom {
 		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 			_ = pc.Close()
 			return nil, err
 		}
-	} else if roomMode != room.ModeChat {
+	} else if roomMode != model.ModeChat {
 		_ = pc.Close()
 		return nil, errors.New("mode not support")
 	}
@@ -181,7 +181,7 @@ func (c *Pusher) Serve() {
 }
 
 func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
-	if c.roomMode == room.ModeChat {
+	if c.roomMode == model.ModeChat {
 		c.onConnConnected(c.roomId, c.key, "", c.uid)
 	}
 	d.OnOpen(func() {
@@ -296,9 +296,9 @@ func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 	} else {
 		c.trackMap[strconv.Itoa(int(remote.SSRC()))] = track
 	}
-	if (c.roomMode == room.ModeAudio || c.roomMode == room.ModeVoiceRoom) && remote.Kind() == webrtc.RTPCodecTypeAudio {
+	if (c.roomMode == model.ModeAudio || c.roomMode == model.ModeVoiceRoom) && remote.Kind() == webrtc.RTPCodecTypeAudio {
 		c.onConnConnected(c.roomId, c.key, "", c.uid)
-	} else if c.roomMode == room.ModeVideo && remote.Kind() == webrtc.RTPCodecTypeVideo {
+	} else if c.roomMode == model.ModeVideo && remote.Kind() == webrtc.RTPCodecTypeVideo {
 		c.onConnConnected(c.roomId, c.key, "", c.uid)
 	}
 	go func(ssrc uint32) {
