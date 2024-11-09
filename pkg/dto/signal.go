@@ -9,8 +9,8 @@ const (
 
 	// BeingRequested 正在被请求通话
 	BeingRequested = 1
-	// CancelRequested 取消被请求通话
-	CancelRequested = 2
+	// CancelRequesting 取消请求通话
+	CancelRequesting = 2
 	// RejectRequest 拒绝请求通话
 	RejectRequest = 3
 	// AcceptRequest 接受请求通话
@@ -100,7 +100,7 @@ func MakeBeingRequestedSignal(roomId string, members []int64, mode int, msg stri
 	return &LiveCallSignal{Type: BeingRequested, Body: string(signalJson)}
 }
 
-func MakeCancelRequestedSignal(roomId string, msg string, createTime, cancelTime int64) *LiveCallSignal {
+func MakeCancelRequestingSignal(roomId string, msg string, createTime, cancelTime int64) *LiveCallSignal {
 	signal := &CancelRequestedSignal{
 		RoomId:     roomId,
 		Msg:        msg,
@@ -111,7 +111,7 @@ func MakeCancelRequestedSignal(roomId string, msg string, createTime, cancelTime
 	if err != nil {
 		return nil
 	}
-	return &LiveCallSignal{Type: CancelRequested, Body: string(signalJson)}
+	return &LiveCallSignal{Type: CancelRequesting, Body: string(signalJson)}
 }
 
 func MakeRejectRequestSignal(roomId string, msg string, uId, rejectTime int64) *LiveCallSignal {

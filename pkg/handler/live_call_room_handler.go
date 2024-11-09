@@ -89,7 +89,60 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			OfflinePush: true,
 		}
 		if _, err := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %v %s", req.RoomId, err.Error())
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %v %s", req.RoomId, err.Error())
+			baseDto.ResponseInternalServerError(ctx, err)
+			return
+		}
+	}
+}
+
+func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
+		req := &dto.CancelCallingReq{}
+		if err := ctx.BindJSON(req); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %s", err.Error())
+			baseDto.ResponseBadRequest(ctx)
+			return
+		}
+		requestUid := ctx.GetInt64(userSdk.UidKey)
+		if requestUid > 0 && requestUid != req.UId {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %d %d", requestUid, req.UId)
+			baseDto.ResponseForbidden(ctx)
+			return
+		}
+		room, errRoom := appCtx.RoomService().FindRoomById(req.RoomId)
+		if errRoom != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %v %s", req.RoomId, errRoom.Error())
+			baseDto.ResponseInternalServerError(ctx, errRoom)
+			return
+		}
+		if room == nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("cancelCallRoomMembers %v %s", req.RoomId, "room not existed")
+			baseDto.ResponseSuccess(ctx, nil)
+			return
+		}
+		if room.OwnerId != requestUid {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %d %d", room.OwnerId, requestUid)
+			baseDto.ResponseForbidden(ctx)
+		}
+
+		if len(req.Members) == 0 {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers room.Members 0")
+			baseDto.ResponseBadRequest(ctx)
+		}
+
+		signal := dto.MakeCancelRequestingSignal(
+			room.Id, req.Msg, room.CreateTime, time.Now().UnixMilli(),
+		)
+		pushMessage := &msgDto.PushMessageReq{
+			UIds:        req.Members,
+			Type:        PushMessageTypeLiveCall,
+			Body:        signal.JsonString(),
+			OfflinePush: true,
+		}
+		if _, err := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %v %s", req.RoomId, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 			return
 		}

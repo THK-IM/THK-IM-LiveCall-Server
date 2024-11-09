@@ -16,6 +16,7 @@ func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 	room := httpEngine.Group("/room")
 	room.POST("", createRoom(appCtx))
 	room.POST("/call", callRoomMembers(appCtx))
+	room.POST("/cancel_call", cancelCallRoomMembers(appCtx))
 	room.GET("/:id", findRoomById(appCtx))
 	room.POST("/member/join", joinRoom(appCtx))
 	room.POST("/member/invite", inviteJoinRoom(appCtx))

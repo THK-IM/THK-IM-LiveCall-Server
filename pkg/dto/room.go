@@ -19,6 +19,13 @@ type (
 		Duration int64   `json:"duration"` // 单位s
 	}
 
+	CancelCallingReq struct {
+		UId     int64   `json:"u_id"`
+		RoomId  string  `json:"room_id"`
+		Msg     string  `json:"msg"`
+		Members []int64 `json:"members"`
+	}
+
 	RoomDelReq struct {
 		UId    int64  `json:"u_id"`
 		RoomId string `json:"room_id"`
