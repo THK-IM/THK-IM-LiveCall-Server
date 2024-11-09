@@ -65,7 +65,7 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*model.Room, error) {
 		Id:      id,
 		Mode:    req.Mode,
 		OwnerId: req.UId,
-		MediaPrams: model.MediaPrams{
+		MediaParams: model.MediaParams{
 			VideoMaxBitrate: req.VideoMaxBitrate,
 			VideoWidth:      req.VideoWidth,
 			VideoHeight:     req.VideoHeight,

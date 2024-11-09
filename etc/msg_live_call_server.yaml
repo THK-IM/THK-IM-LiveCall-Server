@@ -10,7 +10,7 @@ BodyCipherIV: 0000000000000000
 IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
 Rtc:
   Timeout: 5000 #单位ms,要考虑gc时间
-  NodeIp: 192.168.1.10 #公网ip
+  NodeIp: 192.168.1.11 #公网ip
   UdpPort: 30001 #公网端口
 #  TcpPort: 30001
 Node:
