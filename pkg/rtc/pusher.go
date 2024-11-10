@@ -6,7 +6,7 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/interceptor/pkg/stats"
 	"github.com/pion/rtcp"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/model"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
