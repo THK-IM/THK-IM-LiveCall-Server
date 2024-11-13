@@ -103,6 +103,9 @@ func (r *ServiceImpl) RequestJoinRoom(req *dto.RoomJoinReq) (*model.Room, error)
 	if err != nil {
 		return nil, err
 	}
+	if room == nil {
+		return nil, baseErr.ErrParamsError
+	}
 	requestTimeKey := r.getParticipantRequestRoomTimeKey(room.Id, req.UId)
 	err = r.cache.SetEx(requestTimeKey, time.Now().UnixMilli(), time.Minute*30)
 	return room, err
@@ -225,10 +228,11 @@ func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) er
 		return err
 	} else {
 		r.logger.Info("OnParticipantLeave", roomId, uId, ps)
-		if ps == nil || len(ps) == 0 {
-			return r.DestroyRoom(roomId)
-		} else {
-			return nil
-		}
+		//if ps == nil || len(ps) == 0 {
+		//	return r.DestroyRoom(roomId)
+		//} else {
+		//	return nil
+		//}
+		return nil
 	}
 }
