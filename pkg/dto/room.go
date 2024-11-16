@@ -51,6 +51,12 @@ type (
 		Duration   int64   `json:"duration"` // 单位s
 	}
 
+	RoomMemberLeaveReq struct {
+		UId    int64  `json:"u_id"`
+		RoomId string `json:"room_id"`
+		Msg    string `json:"msg"`
+	}
+
 	KickoffMemberReq struct {
 		UId         int64   `json:"u_id"`
 		RoomId      string  `json:"room_id"`

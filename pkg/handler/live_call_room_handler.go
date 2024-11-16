@@ -222,16 +222,26 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		if rsp, err := appCtx.RoomService().RequestJoinRoom(req); err != nil {
+		if room, err := appCtx.RoomService().RequestJoinRoom(req); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("joinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			if rsp == nil {
+			if room == nil {
 				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s not found", req.UId, req.RoomId)
 				baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
 			} else {
+				signal := dto.MakeAcceptRequestSignal(
+					room.Id, "", req.UId, time.Now().UnixMilli(),
+				)
+				pushMessage := &msgDto.PushMessageReq{
+					UIds:        []int64{room.OwnerId},
+					Type:        PushMessageTypeLiveCall,
+					Body:        signal.JsonString(),
+					OfflinePush: true,
+				}
+				_, _ = appCtx.MsgApi().PushMessage(pushMessage, claims)
 				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
-				baseDto.ResponseSuccess(ctx, rsp)
+				baseDto.ResponseSuccess(ctx, room)
 			}
 		}
 	}
@@ -269,7 +279,7 @@ func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 				members = append(members, p.UId)
 			}
 		}
-		signal := dto.MakeEndCallSignal(
+		signal := dto.MakeRejectRequestSignal(
 			room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
 		)
 		pushMessage := &msgDto.PushMessageReq{
@@ -330,6 +340,62 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("inviteJoinRoom %v %v", pushMessage, resp)
+			baseDto.ResponseSuccess(ctx, nil)
+		}
+	}
+}
+
+func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
+		req := &dto.RoomMemberLeaveReq{}
+		if err := ctx.BindJSON(req); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %s", err.Error())
+			baseDto.ResponseBadRequest(ctx)
+			return
+		}
+		requestUid := ctx.GetInt64(userSdk.UidKey)
+		if requestUid > 0 && requestUid != req.UId {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v", req)
+			baseDto.ResponseForbidden(ctx)
+			return
+		}
+
+		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
+		if err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", req, err.Error())
+			baseDto.ResponseInternalServerError(ctx, err)
+			return
+		}
+		if room == nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %d %s not found", req.UId, req.RoomId)
+			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
+			return
+		}
+		hasPermission := room.OwnerId == req.UId
+		if !hasPermission {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v", req)
+			baseDto.ResponseForbidden(ctx)
+			return
+		}
+		members := make([]int64, 0)
+		for _, p := range room.Participants {
+			members = append(members, p.UId)
+		}
+		signal := dto.MakeHangupSignal(
+			room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
+		)
+		pushMessage := &msgDto.PushMessageReq{
+			UIds:        members,
+			Type:        PushMessageTypeLiveCall,
+			Body:        signal.JsonString(),
+			OfflinePush: true,
+		}
+		if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", pushMessage, errPush.Error())
+			baseDto.ResponseInternalServerError(ctx, errPush)
+		} else {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %v %v", pushMessage, resp)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
