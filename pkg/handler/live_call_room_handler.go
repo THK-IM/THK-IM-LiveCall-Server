@@ -80,7 +80,7 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 
 		signal := dto.MakeBeingRequestedSignal(
 			room.Id, req.Members, room.Mode, req.Msg, req.UId, room.CreateTime,
-			room.CreateTime+req.Duration*int64(time.Second),
+			room.CreateTime+req.Duration*1000,
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        req.Members,
@@ -327,7 +327,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 		}
 		signal := dto.MakeBeingRequestedSignal(
 			room.Id, req.InviteUIds, room.Mode, req.Msg, req.UId, room.CreateTime,
-			room.CreateTime+req.Duration*int64(time.Second),
+			room.CreateTime+req.Duration*1000,
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        req.InviteUIds,
@@ -367,35 +367,30 @@ func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseInternalServerError(ctx, err)
 			return
 		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %d %s not found", req.UId, req.RoomId)
-			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
-			return
-		}
-		hasPermission := room.OwnerId == req.UId
-		if !hasPermission {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v", req)
-			baseDto.ResponseForbidden(ctx)
-			return
-		}
-		members := make([]int64, 0)
-		for _, p := range room.Participants {
-			members = append(members, p.UId)
-		}
-		signal := dto.MakeHangupSignal(
-			room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        members,
-			Type:        PushMessageTypeLiveCall,
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", pushMessage, errPush.Error())
-			baseDto.ResponseInternalServerError(ctx, errPush)
+		if room != nil {
+			members := make([]int64, 0)
+			for _, p := range room.Participants {
+				members = append(members, p.UId)
+			}
+			if len(members) > 0 {
+				signal := dto.MakeHangupSignal(
+					room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
+				)
+				pushMessage := &msgDto.PushMessageReq{
+					UIds:        members,
+					Type:        PushMessageTypeLiveCall,
+					Body:        signal.JsonString(),
+					OfflinePush: true,
+				}
+				if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
+					appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", pushMessage, errPush.Error())
+					baseDto.ResponseInternalServerError(ctx, errPush)
+				} else {
+					appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %v %v", pushMessage, resp)
+					baseDto.ResponseSuccess(ctx, nil)
+				}
+			}
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %v %v", pushMessage, resp)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
