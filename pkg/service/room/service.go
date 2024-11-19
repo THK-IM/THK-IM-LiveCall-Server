@@ -62,17 +62,11 @@ func (r *ServiceImpl) NodePublicIp() string {
 func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*model.Room, error) {
 	id := strconv.FormatInt(r.node.Generate().Int64(), 36)
 	room := &model.Room{
-		Id:      id,
-		Mode:    req.Mode,
-		OwnerId: req.UId,
-		MediaParams: model.MediaParams{
-			VideoMaxBitrate: req.VideoMaxBitrate,
-			VideoWidth:      req.VideoWidth,
-			VideoHeight:     req.VideoHeight,
-			VideoFps:        req.VideoFps,
-			AudioMaxBitrate: req.AudioMaxBitrate,
-		},
-		CreateTime: time.Now().UnixMilli(),
+		Id:          id,
+		Mode:        req.Mode,
+		OwnerId:     req.UId,
+		MediaParams: req.MediaParams,
+		CreateTime:  time.Now().UnixMilli(),
 	}
 	roomCacheKey := r.getRoomCacheKey(room.Id)
 	if value, err := r.cache.Get(roomCacheKey); err != nil {

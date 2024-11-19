@@ -1,14 +1,18 @@
 package dto
 
 type (
+	MediaParams struct {
+		VideoMaxBitrate int `json:"video_max_bitrate"` // 视频最大码率
+		VideoWidth      int `json:"video_width"`       // 视频分辨率宽
+		VideoHeight     int `json:"video_height"`      // 视频分辨率高
+		VideoFps        int `json:"video_fps"`         // 视频每秒帧
+		AudioMaxBitrate int `json:"audio_max_bitrate"` // 音频最大码率
+	}
+
 	RoomCreateReq struct {
-		UId             int64 `json:"u_id"`
-		Mode            int   `json:"mode"`
-		VideoMaxBitrate int   `json:"video_max_bitrate"` // 视频最大码率
-		VideoWidth      int   `json:"video_width"`       // 视频分辨率宽
-		VideoHeight     int   `json:"video_height"`      // 视频分辨率高
-		VideoFps        int   `json:"video_fps"`         // 视频每秒帧
-		AudioMaxBitrate int   `json:"audio_max_bitrate"` // 音频最大码率
+		UId         int64        `json:"u_id"`
+		Mode        int          `json:"mode"`
+		MediaParams *MediaParams `json:"media_params"`
 	}
 
 	RoomCallReq struct {
