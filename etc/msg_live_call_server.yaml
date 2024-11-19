@@ -7,12 +7,13 @@ Mode: debug
 DeployMode: "backend"
 BodyCipher: 1234123412341234
 BodyCipherIV: 0000000000000000
-IpWhiteList: 192.168.31.1/24, 192.168.1.1/24
+IpWhiteList: 192.168.31.1/24, 192.168.1.1/16
 Rtc:
   Timeout: 5000 #单位ms,要考虑gc时间
-  NodeIp: 192.168.1.6 #公网ip
-  UdpPort: 30001 #公网端口
-#  TcpPort: 30001
+  #  NodeIp: 192.168.20.214 #公网ip
+  NodeIp: 192.168.20.221
+  #  UdpPort: 30001 #公网端口
+  TcpPort: 30001
 Node:
   MaxCount: 1024
   PollingInterval: 15

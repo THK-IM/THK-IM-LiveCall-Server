@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pion/ice/v2"
+	"github.com/pion/ice/v4"
 	"github.com/pion/webrtc/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
@@ -449,8 +449,8 @@ type serviceImpl struct {
 
 func NewRtcService(source *conf.Rtc, appCtx *app.Context) Service {
 	settingEngine := webrtc.SettingEngine{}
+	settingEngine.LoggerFactory = &LoggerFactory{LogEntry: appCtx.Logger()}
 	if source.TcpPort > 0 {
-		// Enable support only for TCP ICE candidates.
 		settingEngine.SetNetworkTypes([]webrtc.NetworkType{
 			webrtc.NetworkTypeTCP4,
 			webrtc.NetworkTypeTCP6,
@@ -470,6 +470,10 @@ func NewRtcService(source *conf.Rtc, appCtx *app.Context) Service {
 			time.Duration(source.Timeout)*time.Millisecond,
 		)
 	} else if source.UdpPort > 0 {
+		settingEngine.SetNetworkTypes([]webrtc.NetworkType{
+			webrtc.NetworkTypeUDP4,
+			webrtc.NetworkTypeUDP6,
+		})
 		mux, err := ice.NewMultiUDPMuxFromPort(source.UdpPort)
 		if err != nil {
 			panic(err)

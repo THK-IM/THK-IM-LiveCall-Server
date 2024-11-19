@@ -33,12 +33,13 @@ func publishStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc 
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
+		appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("publish offer %s", offer)
 		if conn, err := rtcService.RequestPublish(req.RoomId, string(offer), req.UId); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("publish %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
 			answer := base64.StdEncoding.EncodeToString([]byte(conn.ServerSdp().SDP))
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("publish %v %v", req, answer)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("publish answer %s", answer)
 			baseDto.ResponseSuccess(ctx, &dto.PublishResp{AnswerSdp: answer, StreamKey: conn.Key()})
 		}
 	}
@@ -66,12 +67,13 @@ func playStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc {
 			return
 		}
 		req.OfferSdp = string(offer)
+		appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("playStream offer %s", req.OfferSdp)
 		if answer, streamKey, err := rtcService.RequestPlay(req); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("playStream %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
 			playResp := &dto.PlayResp{AnswerSdp: answer, StreamKey: streamKey}
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("playStream %v %v", req, playResp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("playStream answer %s", playResp.AnswerSdp)
 			baseDto.ResponseSuccess(ctx, playResp)
 		}
 	}

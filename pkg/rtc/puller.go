@@ -66,7 +66,7 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 	}
 
 	for _, v := range trackMap {
-		if _, err = pc.AddTrack(v); err != nil {
+		if _, err = pc.AddTransceiverFromTrack(v, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionSendonly}); err != nil {
 			_ = pc.Close()
 			return nil, err
 		}
@@ -94,7 +94,7 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 		return nil, err
 	}
 	<-gatherComplete
-	answer = *(pc.LocalDescription())
+	answer = *(pc.CurrentLocalDescription())
 	key := fmt.Sprintf(SubscribeStreamKey, subKey, uid)
 	return &Puller{
 		roomId:          roomId,

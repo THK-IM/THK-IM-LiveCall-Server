@@ -69,16 +69,16 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 		return nil, err
 	}
 	if roomMode == model.ModeVideo {
-		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
+		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 			_ = pc.Close()
 			return nil, err
 		}
-		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
+		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 			_ = pc.Close()
 			return nil, err
 		}
 	} else if roomMode == model.ModeAudio || roomMode == model.ModeVoiceRoom {
-		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
+		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{Direction: webrtc.RTPTransceiverDirectionRecvonly}); err != nil {
 			_ = pc.Close()
 			return nil, err
 		}
@@ -290,7 +290,9 @@ func (c *Pusher) ReceiveDataChannelEvent(event *DataChannelEvent) {
 }
 
 func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-	track, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability, c.key, fmt.Sprintf("%d", c.uid))
+	track, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability,
+		fmt.Sprintf("%s/id/%d", remote.Kind().String(), c.uid), fmt.Sprintf("%s/stream/%d", remote.Kind().String(), c.uid),
+	)
 	if err != nil {
 		return
 	} else {
