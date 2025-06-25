@@ -1,19 +1,18 @@
 package handler
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	baseDto "github.com/thk-im/thk-im-base-server/dto"
 	baseMiddleware "github.com/thk-im/thk-im-base-server/middleware"
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
-	msgDto "github.com/thk-im/thk-im-msgapi-server/pkg/dto"
+	"github.com/thk-im/thk-im-livecall-server/pkg/logic"
 	msgSdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
-	"time"
 )
 
 func createRoom(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RoomCreateReq{}
@@ -28,17 +27,19 @@ func createRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		if rsp, err := appCtx.RoomService().CreateRoom(req); err != nil {
+
+		if resp, err := l.CreateRoom(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("createRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("createRoom %v %v", "success", rsp)
-			baseDto.ResponseSuccess(ctx, rsp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("createRoom %v %v", req, resp)
+			baseDto.ResponseSuccess(ctx, resp)
 		}
 	}
 }
 
 func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RoomCallReq{}
@@ -53,46 +54,19 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		room, errRoom := appCtx.RoomService().FindRoomById(req.RoomId)
-		if errRoom != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %v %s", req.RoomId, errRoom.Error())
-			baseDto.ResponseInternalServerError(ctx, errRoom)
-			return
-		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("callRoomMembers %v %s", req.RoomId, "room not existed")
-			baseDto.ResponseSuccess(ctx, nil)
-			return
-		}
-		if room.OwnerId != requestUid {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %d %d", room.OwnerId, requestUid)
-			baseDto.ResponseForbidden(ctx)
-		}
 
-		if len(req.Members) == 0 {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers room.Members 0")
-			baseDto.ResponseBadRequest(ctx)
-		}
-
-		signal := dto.MakeBeingRequestedSignal(
-			room.Id, req.Members, room.Mode, req.Msg, req.UId, room.CreateTime,
-			time.Now().UnixMilli()+req.Duration*1000,
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        req.Members,
-			Type:        appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if _, err := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %v %s", req.RoomId, err.Error())
+		if err := l.CallRoomMembers(req, claims); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
+		} else {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("callRoomMembers %v", req)
+			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.CancelCallingReq{}
@@ -107,45 +81,19 @@ func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		room, errRoom := appCtx.RoomService().FindRoomById(req.RoomId)
-		if errRoom != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %v %s", req.RoomId, errRoom.Error())
-			baseDto.ResponseInternalServerError(ctx, errRoom)
-			return
-		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("cancelCallRoomMembers %v %s", req.RoomId, "room not existed")
-			baseDto.ResponseSuccess(ctx, nil)
-			return
-		}
-		if room.OwnerId != requestUid {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %d %d", room.OwnerId, requestUid)
-			baseDto.ResponseForbidden(ctx)
-		}
 
-		if len(req.Members) == 0 {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers room.Members 0")
-			baseDto.ResponseBadRequest(ctx)
-		}
-
-		signal := dto.MakeCancelRequestingSignal(
-			room.Id, req.Msg, room.CreateTime, time.Now().UnixMilli(),
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        req.Members,
-			Type:        appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if _, err := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %v %s", req.RoomId, err.Error())
+		if err := l.CancelCallRoomMembers(req, claims); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
+		} else {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("cancelCallRoomMembers %v", req)
+			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RoomDelReq{}
@@ -160,50 +108,19 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		room, errRoom := appCtx.RoomService().FindRoomById(req.RoomId)
-		if errRoom != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %v %s", req.RoomId, errRoom.Error())
-			baseDto.ResponseInternalServerError(ctx, errRoom)
-			return
-		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("deleteRoom %v %s", req.RoomId, "room not existed")
-			baseDto.ResponseSuccess(ctx, nil)
-			return
-		}
 
-		if len(room.Participants) > 0 {
-			members := make([]int64, 0)
-			for _, p := range room.Participants {
-				members = append(members, p.UId)
-			}
-			signal := dto.MakeEndCallSignal(
-				room.Id, "", req.UId, time.Now().UnixMilli(),
-			)
-			pushMessage := &msgDto.PushMessageReq{
-				UIds:        members,
-				Type:        appCtx.SignalType(),
-				Body:        signal.JsonString(),
-				OfflinePush: true,
-			}
-			if _, err := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %v %s", req.RoomId, err.Error())
-				baseDto.ResponseInternalServerError(ctx, err)
-				return
-			}
-		}
-
-		if err := appCtx.RoomService().DestroyRoom(req.RoomId); err != nil {
+		if err := l.DeleteRoom(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("deleteRoom %d", req.UId)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("deleteRoom %v", req)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func joinRoom(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RoomJoinReq{}
@@ -218,32 +135,19 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
-		if room, err := appCtx.RoomService().RequestJoinRoom(req); err != nil {
+
+		if resp, err := l.JoinRoom(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("joinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			if room == nil {
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s not found", req.UId, req.RoomId)
-				baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
-			} else {
-				signal := dto.MakeAcceptRequestSignal(
-					room.Id, "", req.UId, time.Now().UnixMilli(),
-				)
-				pushMessage := &msgDto.PushMessageReq{
-					UIds:        []int64{room.OwnerId},
-					Type:        appCtx.SignalType(),
-					Body:        signal.JsonString(),
-					OfflinePush: true,
-				}
-				_, _ = appCtx.MsgApi().PushMessage(pushMessage, claims)
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
-				baseDto.ResponseSuccess(ctx, room)
-			}
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %v %v", req, resp)
+			baseDto.ResponseSuccess(ctx, resp)
 		}
 	}
 }
 
 func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RefuseJoinRoomReq{}
@@ -259,42 +163,18 @@ func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 
-		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
+		if err := l.RefuseJoinRoom(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
-		}
-		if room == nil {
-			baseDto.ResponseSuccess(ctx, nil)
-			return
-		}
-		members := make([]int64, 0)
-		for _, p := range room.Participants {
-			if p.UId != req.UId {
-				members = append(members, p.UId)
-			}
-		}
-		signal := dto.MakeRejectRequestSignal(
-			room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        members,
-			Type:        appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %v %s", pushMessage, errPush.Error())
-			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("refuseJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("refuseJoinRoom %v", req)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.InviteJoinRoomReq{}
@@ -310,38 +190,18 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 
-		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
+		if err := l.InviteJoinRoom(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
-		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s not found", req.UId, req.RoomId)
-			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
-			return
-		}
-		signal := dto.MakeBeingRequestedSignal(
-			room.Id, req.InviteUIds, room.Mode, req.Msg, req.UId, room.CreateTime,
-			time.Now().UnixMilli()+req.Duration*1000,
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        req.InviteUIds,
-			Type:        appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", pushMessage, errPush.Error())
-			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("inviteJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("inviteJoinRoom %v", req)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.RoomMemberLeaveReq{}
@@ -357,98 +217,45 @@ func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 
-		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
+		if err := l.RoomMemberLeave(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
-		}
-		if room != nil {
-			members := make([]int64, 0)
-			for _, p := range room.Participants {
-				members = append(members, p.UId)
-			}
-			if len(members) > 0 {
-				signal := dto.MakeHangupSignal(
-					room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
-				)
-				pushMessage := &msgDto.PushMessageReq{
-					UIds:        members,
-					Type:        appCtx.SignalType(),
-					Body:        signal.JsonString(),
-					OfflinePush: true,
-				}
-				if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-					appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", pushMessage, errPush.Error())
-					baseDto.ResponseInternalServerError(ctx, errPush)
-				} else {
-					appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("leaveRoomMember %v %v", pushMessage, resp)
-					baseDto.ResponseSuccess(ctx, nil)
-				}
-			}
 		} else {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("leaveRoomMember %v", req)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
-func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
+func KickoffRoomMember(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		req := &dto.KickoffMemberReq{}
 		if err := ctx.BindJSON(req); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("kickRoomMember %s", err.Error())
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("KickoffRoomMember %s", err.Error())
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
 		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("kickRoomMember %v", req)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("KickoffRoomMember %v", req)
 			baseDto.ResponseForbidden(ctx)
 			return
 		}
 
-		room, err := appCtx.RoomService().FindRoomById(req.RoomId)
-		if err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("kickRoomMember %v %s", req, err.Error())
+		if err := l.KickoffRoomMember(req, claims); err != nil {
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("KickoffRoomMember %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
-			return
-		}
-		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("kickRoomMember %d %s not found", req.UId, req.RoomId)
-			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
-			return
-		}
-		hasPermission := room.OwnerId == req.UId
-		if !hasPermission {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("kickRoomMember %v", req)
-			baseDto.ResponseForbidden(ctx)
-			return
-		}
-		members := make([]int64, 0)
-		for _, p := range room.Participants {
-			members = append(members, p.UId)
-		}
-		signal := dto.MakeKickMemberSignal(
-			room.Id, req.Msg, req.UId, time.Now().UnixMilli(), req.KickoffUIds,
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        members,
-			Type:        appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		if resp, errPush := appCtx.MsgApi().PushMessage(pushMessage, claims); err != nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", pushMessage, errPush.Error())
-			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("inviteJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("KickoffRoomMember %v", req)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
 }
 
 func findRoomById(appCtx *app.Context) gin.HandlerFunc {
+	l := logic.NewRoomLogic(appCtx)
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
 		roomId := ctx.Param("id")
@@ -456,7 +263,7 @@ func findRoomById(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("findRoomById %s", roomId)
 			baseDto.ResponseBadRequest(ctx)
 		}
-		if rsp, err := appCtx.RoomService().FindRoomById(roomId); err != nil {
+		if rsp, err := l.QueryRoom(roomId, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("findRoomById %v %s", roomId, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {

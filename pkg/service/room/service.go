@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	baseDto "github.com/thk-im/thk-im-base-server/dto"
 	baseErr "github.com/thk-im/thk-im-base-server/errorx"
 	"github.com/thk-im/thk-im-base-server/snowflake"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
+	"github.com/thk-im/thk-im-livecall-server/pkg/errorx"
+	"github.com/thk-im/thk-im-livecall-server/pkg/sdk"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/cache"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/model"
 	"strconv"
 	"time"
 )
@@ -23,28 +25,31 @@ const (
 
 type Service interface {
 	// CreateRoom 创建房间
-	CreateRoom(*dto.RoomCreateReq) (*model.Room, error)
+	CreateRoom(*dto.RoomCreateReq) (*dto.Room, error)
 	// FindRoomById 通过id查询房间信息
-	FindRoomById(id string) (*model.Room, error)
+	FindRoomById(id string) (*dto.Room, error)
 	// DestroyRoom  通过id销毁房间
 	DestroyRoom(id string) error
 	// NodePublicIp 所在节点公网ip地址
 	NodePublicIp() string
 	// RequestJoinRoom 请求加入房间
-	RequestJoinRoom(req *dto.RoomJoinReq) (*model.Room, error)
+	RequestJoinRoom(req *dto.RoomJoinReq) (*dto.Room, error)
 	// GetRequestJoinRoomTime 获取用户请求加入房间的时间戳
 	GetRequestJoinRoomTime(roomId string, uId int64) (int64, error)
 	// OnParticipantJoin 房间参与人加入房间回调
 	OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error
 	// OnParticipantLeave 房间参与人离开房间回调
 	OnParticipantLeave(roomId, streamKey string, uId int64) error
+	// OnParticipantStreamEvent 房间参与人推流事件
+	OnParticipantStreamEvent(roomId, streamKey string, uId int64) error
 }
 
-func NewService(node *snowflake.Node, cache cache.RoomCache, logger *logrus.Entry) Service {
+func NewService(node *snowflake.Node, cache cache.RoomCache, checkApi sdk.CheckApi, logger *logrus.Entry) Service {
 	return &ServiceImpl{
-		logger: logger,
-		cache:  cache,
-		node:   node,
+		logger:   logger,
+		cache:    cache,
+		node:     node,
+		checkApi: checkApi,
 	}
 }
 
@@ -52,16 +57,17 @@ type ServiceImpl struct {
 	logger   *logrus.Entry
 	cache    cache.RoomCache
 	node     *snowflake.Node
+	checkApi sdk.CheckApi
 	publicIp string
 }
 
-func (r *ServiceImpl) NodePublicIp() string {
+func (r ServiceImpl) NodePublicIp() string {
 	return r.publicIp
 }
 
-func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*model.Room, error) {
+func (r ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*dto.Room, error) {
 	id := strconv.FormatInt(r.node.Generate().Int64(), 36)
-	room := &model.Room{
+	room := &dto.Room{
 		Id:          id,
 		Mode:        req.Mode,
 		OwnerId:     req.UId,
@@ -92,7 +98,7 @@ func (r *ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*model.Room, error) {
 	}
 }
 
-func (r *ServiceImpl) RequestJoinRoom(req *dto.RoomJoinReq) (*model.Room, error) {
+func (r ServiceImpl) RequestJoinRoom(req *dto.RoomJoinReq) (*dto.Room, error) {
 	room, err := r.FindRoomById(req.RoomId)
 	if err != nil {
 		return nil, err
@@ -105,7 +111,7 @@ func (r *ServiceImpl) RequestJoinRoom(req *dto.RoomJoinReq) (*model.Room, error)
 	return room, err
 }
 
-func (r *ServiceImpl) FindRoomById(id string) (*model.Room, error) {
+func (r ServiceImpl) FindRoomById(id string) (*dto.Room, error) {
 	value, err := r.cache.Get(r.getRoomCacheKey(id))
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -117,14 +123,14 @@ func (r *ServiceImpl) FindRoomById(id string) (*model.Room, error) {
 	if !ok {
 		return nil, baseErr.ErrInternalServerError
 	}
-	room, e := model.NewRoomByJson([]byte(roomJson))
+	room, e := dto.NewRoomByJson([]byte(roomJson))
 	if e != nil {
 		return nil, e
 	}
 	if members, errMembers := r.cache.HValues(r.getParticipantsCacheKey(id)); errMembers == nil {
-		participants := make([]*model.Participant, 0)
+		participants := make([]*dto.Participant, 0)
 		for _, m := range members {
-			if participant, errJson := model.NewParticipantByJson([]byte(m)); errJson == nil {
+			if participant, errJson := dto.NewParticipantByJson([]byte(m)); errJson == nil {
 				participants = append(participants, participant)
 			}
 		}
@@ -133,7 +139,7 @@ func (r *ServiceImpl) FindRoomById(id string) (*model.Room, error) {
 	return room, nil
 }
 
-func (r *ServiceImpl) DestroyRoom(id string) error {
+func (r ServiceImpl) DestroyRoom(id string) error {
 	if err := r.cache.Del(r.getRoomCacheKey(id)); err != nil {
 		return err
 	}
@@ -155,20 +161,20 @@ func (r *ServiceImpl) DestroyRoom(id string) error {
 	return nil
 }
 
-func (r *ServiceImpl) getParticipantRequestRoomTimeKey(roomId string, userId int64) string {
+func (r ServiceImpl) getParticipantRequestRoomTimeKey(roomId string, userId int64) string {
 	return fmt.Sprintf(ParticipantRequestRoomTime, roomId, userId)
 }
 
-func (r *ServiceImpl) getRoomCacheKey(roomId string) string {
+func (r ServiceImpl) getRoomCacheKey(roomId string) string {
 	return fmt.Sprintf(CacheKey, roomId)
 }
 
-func (r *ServiceImpl) getParticipantsCacheKey(roomId string) string {
+func (r ServiceImpl) getParticipantsCacheKey(roomId string) string {
 	return fmt.Sprintf(ParticipantsKey, roomId)
 }
 
-func (r *ServiceImpl) OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error {
-	participant := &model.Participant{
+func (r ServiceImpl) OnParticipantJoin(roomId, streamKey string, joinTime int64, role int, uId int64) error {
+	participant := &dto.Participant{
 		UId:       uId,
 		Role:      role,
 		JoinTime:  joinTime,
@@ -181,7 +187,7 @@ func (r *ServiceImpl) OnParticipantJoin(roomId, streamKey string, joinTime int64
 		if errRoom != nil {
 			return errRoom
 		}
-		if room.Mode == model.ModeVoiceRoom {
+		if room.Mode == dto.ModeVoiceRoom || room.Mode == dto.ModeVideoRoom {
 			err = r.cache.Expire(roomCacheKey, time.Hour*24*365)
 		} else {
 			err = r.cache.Expire(roomCacheKey, time.Hour*24)
@@ -195,7 +201,7 @@ func (r *ServiceImpl) OnParticipantJoin(roomId, streamKey string, joinTime int64
 	return err
 }
 
-func (r *ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, error) {
+func (r ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, error) {
 	requestTimeKey := r.getParticipantRequestRoomTimeKey(roomId, uId)
 	v, err := r.cache.Get(requestTimeKey)
 	if err != nil {
@@ -211,7 +217,7 @@ func (r *ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, e
 	}
 }
 
-func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) error {
+func (r ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) error {
 	r.logger.Trace("OnParticipantLeave", roomId, uId, streamKey)
 	cacheKey := r.getParticipantsCacheKey(roomId)
 	if err := r.cache.HDel(cacheKey, streamKey); err != nil {
@@ -224,4 +230,22 @@ func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) er
 		r.logger.Trace("OnParticipantLeave", roomId, uId, ps)
 		return nil
 	}
+}
+
+func (r ServiceImpl) OnParticipantStreamEvent(roomId, streamKey string, uId int64) error {
+	r.logger.Trace("OnParticipantStreamUp", roomId, uId, streamKey)
+	if r.checkApi == nil {
+		return nil
+	}
+	room, err := r.FindRoomById(roomId)
+	if err != nil {
+		return err
+	}
+	if room == nil {
+		return errorx.ErrRoomNotExisted
+	}
+	req := &dto.CheckLiveCallStatusReq{Room: room}
+	claims := baseDto.ThkClaims{}
+	claims.PutValue(baseDto.SpanID, "1")
+	return r.checkApi.CheckLiveCallStatus(req, claims)
 }

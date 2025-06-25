@@ -13,7 +13,6 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
-	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/model"
 	"net"
 	"sync"
 	"time"
@@ -182,9 +181,9 @@ func (r serviceImpl) notifyClientRemoveStream(msg string, publishEvent *PublishE
 
 func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 	if pusher, err := r.getPusher(roomId, key); err == nil {
-		role := model.Audience
+		role := dto.Audience
 		if len(pusher.TrackMap()) > 0 {
-			role = model.Broadcast
+			role = dto.Broadcast
 		}
 		event := &PublishEvent{
 			RoomId:    roomId,
@@ -321,10 +320,10 @@ func (r serviceImpl) RequestPlay(req *dto.PlayReq) (string, string, error) {
 	if rm == nil {
 		return "", "", errors.New("room is not existed")
 	}
-	if rm.Mode == model.ModeChat {
+	if rm.Mode == dto.ModeChat {
 		return "", "", errors.New("no stream pull")
 	}
-	if rm.Mode != model.ModeAudio && rm.Mode != model.ModeVideo && rm.Mode != model.ModeVoiceRoom {
+	if rm.Mode != dto.ModeAudio && rm.Mode != dto.ModeVideo && rm.Mode != dto.ModeVoiceRoom {
 		return "", "", errors.New("mode error")
 	}
 	answerSdp := ""
