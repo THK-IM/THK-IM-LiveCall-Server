@@ -59,7 +59,7 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 	}
 	var statsGetter *stats.Interceptor
 	statsInterceptorFactory.OnNewPeerConnection(func(s string, getter stats.Getter) {
-		logger.Infof("OnNewPeerConnection, interceptor, %s", s)
+		logger.Tracef("OnNewPeerConnection, interceptor, %s", s)
 		statsGetter, _ = getter.(*stats.Interceptor)
 	})
 	i.Add(statsInterceptorFactory)
@@ -163,14 +163,14 @@ func (c *Pusher) Serve() {
 	c.peerConn.OnDataChannel(c.OnDataChannel)
 	c.peerConn.OnTrack(c.OnTrack)
 	c.peerConn.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		c.logger.Infof("State Changed: Signal %s", state.String())
+		c.logger.Tracef("State Changed: Signal %s", state.String())
 	})
 
 	c.peerConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		c.logger.Infof("State Changed: ICEState %s", connectionState.String())
+		c.logger.Tracef("State Changed: ICEState %s", connectionState.String())
 	})
 	c.peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		c.logger.Infof("State Changed: PeerConn %s", state.String())
+		c.logger.Tracef("State Changed: PeerConn %s", state.String())
 		if state >= webrtc.PeerConnectionStateDisconnected {
 			c.Stop()
 		}
@@ -186,7 +186,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 	}
 	d.OnOpen(func() {
 		c.dcMap[d.Label()] = d
-		c.logger.Info("Datachannel OnOpen: ", d.Label(), c.uid)
+		c.logger.Trace("Datachannel OnOpen: ", d.Label(), c.uid)
 		if c.onDataChannelEvent != nil {
 			ordered := d.Ordered()
 			protocol := d.Protocol()
@@ -210,7 +210,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 		}
 	})
 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
-		c.logger.Info("Datachannel OnMessage: ", d.Label())
+		c.logger.Trace("Datachannel OnMessage: ", d.Label())
 		if c.onDataChannelEvent != nil {
 			event := &DataChannelEvent{
 				StreamKey: c.key,
@@ -224,7 +224,7 @@ func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 		}
 	})
 	d.OnClose(func() {
-		c.logger.Info("Datachannel OnClose: ", d.Label())
+		c.logger.Trace("Datachannel OnClose: ", d.Label())
 		if c.onDataChannelEvent != nil {
 			event := &DataChannelEvent{
 				StreamKey: c.key,
@@ -324,7 +324,6 @@ func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 						}
 						// 产生丢包，发送关键帧
 						if sts.InboundRTPStreamStats.PacketsLost != currentLost {
-							// c.logger.Infof("pusher write key frame, roomId: %s", c.roomId)
 							currentLost = sts.InboundRTPStreamStats.PacketsLost
 						}
 					}

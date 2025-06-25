@@ -201,7 +201,7 @@ func (r *ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, e
 	if err != nil {
 		return 0, err
 	}
-	r.logger.Infof("GetRequestJoinRoomTime %s, %d, %v", roomId, uId, v)
+	r.logger.Tracef("GetRequestJoinRoomTime %s, %d, %v", roomId, uId, v)
 	t, ok := v.(string)
 	if ok {
 		it, _ := strconv.Atoi(t)
@@ -212,7 +212,7 @@ func (r *ServiceImpl) GetRequestJoinRoomTime(roomId string, uId int64) (int64, e
 }
 
 func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) error {
-	r.logger.Info("OnParticipantLeave", roomId, uId, streamKey)
+	r.logger.Trace("OnParticipantLeave", roomId, uId, streamKey)
 	cacheKey := r.getParticipantsCacheKey(roomId)
 	if err := r.cache.HDel(cacheKey, streamKey); err != nil {
 		return err
@@ -221,12 +221,7 @@ func (r *ServiceImpl) OnParticipantLeave(roomId, streamKey string, uId int64) er
 		r.logger.Error("OnParticipantLeave", roomId, uId, streamKey, err)
 		return err
 	} else {
-		r.logger.Info("OnParticipantLeave", roomId, uId, ps)
-		//if ps == nil || len(ps) == 0 {
-		//	return r.DestroyRoom(roomId)
-		//} else {
-		//	return nil
-		//}
+		r.logger.Trace("OnParticipantLeave", roomId, uId, ps)
 		return nil
 	}
 }

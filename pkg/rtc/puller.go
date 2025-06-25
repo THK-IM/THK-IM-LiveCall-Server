@@ -54,7 +54,7 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 	}
 	var statsGetter *stats.Interceptor
 	statsInterceptorFactory.OnNewPeerConnection(func(s string, getter stats.Getter) {
-		logger.Infof("OnNewPeerConnection, interceptor, %s", s)
+		logger.Tracef("OnNewPeerConnection, interceptor, %s", s)
 		statsGetter, _ = getter.(*stats.Interceptor)
 	})
 	i.Add(statsInterceptorFactory)
@@ -125,13 +125,13 @@ func (c *Puller) ServerSdp() *webrtc.SessionDescription {
 
 func (c *Puller) Serve() {
 	c.peerConn.OnSignalingStateChange(func(state webrtc.SignalingState) {
-		c.logger.Infof("Puller State changed: Singal %v", state)
+		c.logger.Tracef("Puller State changed: Singal %v", state)
 	})
 	c.peerConn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		c.logger.Infof("Puller State changed: ice %v", connectionState)
+		c.logger.Tracef("Puller State changed: ice %v", connectionState)
 	})
 	c.peerConn.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		c.logger.Infof("Puller State changed: Connect %v", state)
+		c.logger.Tracef("Puller State changed: Connect %v", state)
 		if state >= webrtc.PeerConnectionStateDisconnected {
 			c.Stop()
 		}
@@ -193,7 +193,6 @@ func (c *Puller) onConnected() {
 
 func (c *Puller) Stop() {
 	c.mutex.Lock()
-	c.logger.Infof("Stop")
 	if c.statsGetter != nil {
 		if err := c.statsGetter.Close(); err != nil {
 			c.logger.Error("statsGetter Close err:", err)

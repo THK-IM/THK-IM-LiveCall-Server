@@ -52,7 +52,7 @@ func (r serviceImpl) InitServer() {
 			return
 		}
 		if puller == nil {
-			r.logger.Infof("Sub: %s, stream: %s is not existed", ResponseSubscribeEventKey, req.StreamKey)
+			r.logger.Tracef("Sub: %s, stream: %s is not existed", ResponseSubscribeEventKey, req.StreamKey)
 			return
 		}
 		answer := base64.StdEncoding.EncodeToString([]byte(puller.ServerSdp().SDP))
@@ -120,7 +120,7 @@ func (r serviceImpl) InitServer() {
 	})
 	// 停止房间内stream的消息监听
 	r.appCtx.RoomCache().Sub(room.DestroyRoomEventKey, func(msg string) {
-		r.logger.Info("CacheService Sub: ", room.DestroyRoomEventKey, " msg: ", msg)
+		r.logger.Trace("CacheService Sub: ", room.DestroyRoomEventKey, " msg: ", msg)
 		event := &room.DestroyRoomEvent{}
 		if err := json.Unmarshal([]byte(msg), event); err != nil {
 			r.logger.Error("Sub: ", room.DestroyRoomEventKey, " err: ", err)
@@ -142,10 +142,10 @@ func (r serviceImpl) notifyClientNewStream(msg string, publishEvent *PublishEven
 	pusherMap := r.roomPusherMap[publishEvent.RoomId]
 	if pusherMap != nil {
 		for _, v := range pusherMap {
-			r.logger.Infof("notifyClientNewStream: %s, uid: %d, %d", msg, v.uid, publishEvent.UId)
+			r.logger.Tracef("notifyClientNewStream: %s, uid: %d, %d", msg, v.uid, publishEvent.UId)
 			if v.uid != publishEvent.UId {
 				if dc := v.dcMap[""]; dc != nil {
-					r.logger.Infof("notifyClientNewStream, uid: %d : dc is not nil,  %d", v.uid, publishEvent.UId)
+					r.logger.Tracef("notifyClientNewStream, uid: %d : dc is not nil,  %d", v.uid, publishEvent.UId)
 					notifyMsg := NewStreamNotify(msg)
 					if notifyMsg != nil {
 						if e := dc.SendText(*notifyMsg); e != nil {
@@ -153,7 +153,7 @@ func (r serviceImpl) notifyClientNewStream(msg string, publishEvent *PublishEven
 						}
 					}
 				} else {
-					r.logger.Infof("notifyClientNewStream, uid: %d : dc is nil, event uid: %d ", v.uid, publishEvent.UId)
+					r.logger.Tracef("notifyClientNewStream, uid: %d : dc is nil, event uid: %d ", v.uid, publishEvent.UId)
 				}
 			}
 		}
@@ -161,7 +161,7 @@ func (r serviceImpl) notifyClientNewStream(msg string, publishEvent *PublishEven
 }
 
 func (r serviceImpl) notifyClientRemoveStream(msg string, publishEvent *PublishEvent) {
-	r.logger.Info("notifyClientRemoveStream", msg)
+	r.logger.Trace("notifyClientRemoveStream", msg)
 	// 通知当前节点下房间内所有用户 有新的流移除
 	pusherMap := r.roomPusherMap[publishEvent.RoomId]
 	if pusherMap != nil {
@@ -218,7 +218,7 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 		if rm, errRoom := r.appCtx.RoomService().FindRoomById(roomId); errRoom == nil {
 			if rm != nil {
 				for _, p := range rm.Participants {
-					r.logger.Infof("notifyClientNewStream uId: %d p: %d, JoinTime: %d, requestJoinTime: %d, pusherJoinTime: %d", uId, p.UId, p.JoinTime, requestJoinTime, pusherJoinTime)
+					r.logger.Tracef("notifyClientNewStream uId: %d p: %d, JoinTime: %d, requestJoinTime: %d, pusherJoinTime: %d", uId, p.UId, p.JoinTime, requestJoinTime, pusherJoinTime)
 					if p.JoinTime < pusherJoinTime && p.JoinTime > requestJoinTime {
 						event = &PublishEvent{
 							RoomId:    roomId,
@@ -238,7 +238,7 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 								}
 							}
 						} else {
-							r.logger.Infof("notifyClientNewStream, uid: %d , dc is not nil  event uid: %d ", pusher.uid, p.UId)
+							r.logger.Tracef("notifyClientNewStream, uid: %d , dc is not nil  event uid: %d ", pusher.uid, p.UId)
 						}
 					}
 				}
@@ -255,7 +255,7 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64) {
 func (r serviceImpl) OnPusherClosed(roomId, key, subKey string, uId int64) {
 	r.rwMutex.RLock()
 	defer r.rwMutex.RUnlock()
-	r.logger.Info("OnPusherConnected: ", roomId, uId, key, subKey)
+	r.logger.Trace("OnPusherConnected: ", roomId, uId, key, subKey)
 	pusherMap := r.roomPusherMap[roomId]
 	if pusherMap != nil {
 		if pusherMap[key] != nil {
@@ -426,7 +426,7 @@ func (r serviceImpl) RequestPublish(roomId, offerSdp string, uid int64) (*Pusher
 }
 
 func (r serviceImpl) WriteKeyFrame(roomId string, subKey string) {
-	r.logger.Infof("puller write key frame, roomId: %s, subKey: %s", roomId, subKey)
+	r.logger.Tracef("puller write key frame, roomId: %s, subKey: %s", roomId, subKey)
 	pusher, err := r.getPusher(roomId, subKey)
 	if err != nil {
 		return

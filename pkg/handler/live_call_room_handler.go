@@ -36,7 +36,7 @@ func createRoom(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("createRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("createRoom %v %v", "success", rsp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("createRoom %v %v", "success", rsp)
 			baseDto.ResponseSuccess(ctx, rsp)
 		}
 	}
@@ -64,7 +64,7 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("callRoomMembers %v %s", req.RoomId, "room not existed")
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("callRoomMembers %v %s", req.RoomId, "room not existed")
 			baseDto.ResponseSuccess(ctx, nil)
 			return
 		}
@@ -118,7 +118,7 @@ func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("cancelCallRoomMembers %v %s", req.RoomId, "room not existed")
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("cancelCallRoomMembers %v %s", req.RoomId, "room not existed")
 			baseDto.ResponseSuccess(ctx, nil)
 			return
 		}
@@ -171,7 +171,7 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("deleteRoom %v %s", req.RoomId, "room not existed")
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("deleteRoom %v %s", req.RoomId, "room not existed")
 			baseDto.ResponseSuccess(ctx, nil)
 			return
 		}
@@ -201,7 +201,7 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("deleteRoom %d", req.UId)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("deleteRoom %d", req.UId)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
@@ -227,7 +227,7 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
 			if room == nil {
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s not found", req.UId, req.RoomId)
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s not found", req.UId, req.RoomId)
 				baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
 			} else {
 				signal := dto.MakeAcceptRequestSignal(
@@ -240,7 +240,7 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 					OfflinePush: true,
 				}
 				_, _ = appCtx.MsgApi().PushMessage(pushMessage, claims)
-				appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
+				appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s %d", req.UId, req.RoomId, req.Role)
 				baseDto.ResponseSuccess(ctx, room)
 			}
 		}
@@ -292,7 +292,7 @@ func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %v %s", pushMessage, errPush.Error())
 			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("refuseJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("refuseJoinRoom %v %v", pushMessage, resp)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
@@ -321,7 +321,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("joinRoom %d %s not found", req.UId, req.RoomId)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("joinRoom %d %s not found", req.UId, req.RoomId)
 			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
 			return
 		}
@@ -339,7 +339,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", pushMessage, errPush.Error())
 			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("inviteJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("inviteJoinRoom %v %v", pushMessage, resp)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
@@ -386,7 +386,7 @@ func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
 					appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v %s", pushMessage, errPush.Error())
 					baseDto.ResponseInternalServerError(ctx, errPush)
 				} else {
-					appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("leaveRoomMember %v %v", pushMessage, resp)
+					appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("leaveRoomMember %v %v", pushMessage, resp)
 					baseDto.ResponseSuccess(ctx, nil)
 				}
 			}
@@ -419,7 +419,7 @@ func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			return
 		}
 		if room == nil {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("kickRoomMember %d %s not found", req.UId, req.RoomId)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("kickRoomMember %d %s not found", req.UId, req.RoomId)
 			baseDto.ResponseInternalServerError(ctx, errors.New("room not found"))
 			return
 		}
@@ -446,7 +446,7 @@ func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v %s", pushMessage, errPush.Error())
 			baseDto.ResponseInternalServerError(ctx, errPush)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("inviteJoinRoom %v %v", pushMessage, resp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("inviteJoinRoom %v %v", pushMessage, resp)
 			baseDto.ResponseSuccess(ctx, nil)
 		}
 	}
@@ -464,7 +464,7 @@ func findRoomById(appCtx *app.Context) gin.HandlerFunc {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("findRoomById %v %s", roomId, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
-			appCtx.Logger().WithFields(logrus.Fields(claims)).Infof("findRoomById %s %v", roomId, rsp)
+			appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("findRoomById %s %v", roomId, rsp)
 			baseDto.ResponseSuccess(ctx, rsp)
 		}
 	}
