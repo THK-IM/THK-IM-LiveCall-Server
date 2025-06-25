@@ -9,7 +9,7 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
-	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
+	msgSdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
 )
 
 func publishStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc {
@@ -21,7 +21,7 @@ func publishStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc 
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("publish %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -54,7 +54,7 @@ func playStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("playStream %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)

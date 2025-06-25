@@ -3,14 +3,14 @@ package handler
 import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
-	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
+	msgsdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
 )
 
 func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 
 	httpEngine := appCtx.HttpEngine()
 	loginApi := appCtx.LoginApi()
-	userTokenAuth := userSdk.UserTokenAuth(loginApi, appCtx.Logger())
+	userTokenAuth := msgsdk.UserTokenAuth(loginApi, appCtx.Logger())
 	httpEngine.Use(userTokenAuth)
 
 	room := httpEngine.Group("/room")

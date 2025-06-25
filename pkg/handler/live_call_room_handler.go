@@ -9,7 +9,7 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	msgDto "github.com/thk-im/thk-im-msgapi-server/pkg/dto"
-	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
+	msgSdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
 	"time"
 )
 
@@ -26,7 +26,7 @@ func createRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("createRoom %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -51,7 +51,7 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("callRoomMembers %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -105,7 +105,7 @@ func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("cancelCallRoomMembers %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -158,7 +158,7 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("deleteRoom %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -216,7 +216,7 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("joinRoom %d %d", requestUid, req.UId)
 			baseDto.ResponseForbidden(ctx)
@@ -256,7 +256,7 @@ func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("refuseJoinRoom %d %v", requestUid, req)
 			baseDto.ResponseForbidden(ctx)
@@ -307,7 +307,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("inviteJoinRoom %v", req)
 			baseDto.ResponseForbidden(ctx)
@@ -354,7 +354,7 @@ func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("leaveRoomMember %v", req)
 			baseDto.ResponseForbidden(ctx)
@@ -405,7 +405,7 @@ func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
 			baseDto.ResponseBadRequest(ctx)
 			return
 		}
-		requestUid := ctx.GetInt64(userSdk.UidKey)
+		requestUid := ctx.GetInt64(msgSdk.UidKey)
 		if requestUid > 0 && requestUid != req.UId {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("kickRoomMember %v", req)
 			baseDto.ResponseForbidden(ctx)

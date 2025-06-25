@@ -9,7 +9,6 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/cache"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
 	msgSdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
-	userSdk "github.com/thk-im/thk-im-user-server/pkg/sdk"
 )
 
 type Context struct {
@@ -44,8 +43,8 @@ func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.roomCache = cacheService
 }
 
-func (c *Context) LoginApi() userSdk.LoginApi {
-	return c.Context.SdkMap["login_api"].(userSdk.LoginApi)
+func (c *Context) LoginApi() msgSdk.LoginApi {
+	return c.Context.SdkMap["login_api"].(msgSdk.LoginApi)
 }
 
 func (c *Context) MsgApi() msgSdk.MsgApi {
