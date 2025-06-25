@@ -13,10 +13,6 @@ import (
 	"time"
 )
 
-const (
-	PushMessageTypeLiveCall = 400
-)
-
 func createRoom(appCtx *app.Context) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		claims := ctx.MustGet(baseMiddleware.ClaimsKey).(baseDto.ThkClaims)
@@ -84,7 +80,7 @@ func callRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        req.Members,
-			Type:        PushMessageTypeLiveCall,
+			Type:        appCtx.SignalType(),
 			Body:        signal.JsonString(),
 			OfflinePush: true,
 		}
@@ -137,7 +133,7 @@ func cancelCallRoomMembers(appCtx *app.Context) gin.HandlerFunc {
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        req.Members,
-			Type:        PushMessageTypeLiveCall,
+			Type:        appCtx.SignalType(),
 			Body:        signal.JsonString(),
 			OfflinePush: true,
 		}
@@ -186,7 +182,7 @@ func deleteRoom(appCtx *app.Context) gin.HandlerFunc {
 			)
 			pushMessage := &msgDto.PushMessageReq{
 				UIds:        members,
-				Type:        PushMessageTypeLiveCall,
+				Type:        appCtx.SignalType(),
 				Body:        signal.JsonString(),
 				OfflinePush: true,
 			}
@@ -235,7 +231,7 @@ func joinRoom(appCtx *app.Context) gin.HandlerFunc {
 				)
 				pushMessage := &msgDto.PushMessageReq{
 					UIds:        []int64{room.OwnerId},
-					Type:        PushMessageTypeLiveCall,
+					Type:        appCtx.SignalType(),
 					Body:        signal.JsonString(),
 					OfflinePush: true,
 				}
@@ -284,7 +280,7 @@ func refuseJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        members,
-			Type:        PushMessageTypeLiveCall,
+			Type:        appCtx.SignalType(),
 			Body:        signal.JsonString(),
 			OfflinePush: true,
 		}
@@ -331,7 +327,7 @@ func inviteJoinRoom(appCtx *app.Context) gin.HandlerFunc {
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        req.InviteUIds,
-			Type:        PushMessageTypeLiveCall,
+			Type:        appCtx.SignalType(),
 			Body:        signal.JsonString(),
 			OfflinePush: true,
 		}
@@ -378,7 +374,7 @@ func leaveRoomMember(appCtx *app.Context) gin.HandlerFunc {
 				)
 				pushMessage := &msgDto.PushMessageReq{
 					UIds:        members,
-					Type:        PushMessageTypeLiveCall,
+					Type:        appCtx.SignalType(),
 					Body:        signal.JsonString(),
 					OfflinePush: true,
 				}
@@ -438,7 +434,7 @@ func kickRoomMember(appCtx *app.Context) gin.HandlerFunc {
 		)
 		pushMessage := &msgDto.PushMessageReq{
 			UIds:        members,
-			Type:        PushMessageTypeLiveCall,
+			Type:        appCtx.SignalType(),
 			Body:        signal.JsonString(),
 			OfflinePush: true,
 		}

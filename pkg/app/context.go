@@ -17,6 +17,7 @@ type Context struct {
 	roomCache   cache.RoomCache
 	roomService room.Service
 	logger      *logrus.Entry
+	signalType  int
 	*server.Context
 }
 
@@ -32,6 +33,10 @@ func (c *Context) StatService() stat.Service {
 	return c.statService
 }
 
+func (c *Context) SignalType() int {
+	return c.signalType
+}
+
 func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.Context = &server.Context{}
 	c.Context.Init(config.Config)
@@ -41,6 +46,7 @@ func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.roomService = loader.LoadRoomService(c.SnowflakeNode(), cacheService, logger)
 	c.statService = loader.LoadStatService(config.Stat, logger)
 	c.roomCache = cacheService
+	c.signalType = config.SignalType
 }
 
 func (c *Context) LoginApi() msgSdk.LoginApi {

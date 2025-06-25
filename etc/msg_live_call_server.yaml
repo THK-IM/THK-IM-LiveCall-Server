@@ -8,10 +8,12 @@ DeployMode: "backend"
 BodyCipher: 1234123412341234
 BodyCipherIV: 0000000000000000
 IpWhiteList: 192.168.31.1/24, 192.168.1.1/16
+#  信令类型
+SignalType: 400
 Rtc:
   Timeout: 5000 #单位ms,要考虑gc时间
   #  NodeIp: 192.168.20.214 #公网ip
-  NodeIp: 192.168.20.221
+  NodeIp: 192.168.20.40
   #  UdpPort: 30001 #公网端口
   TcpPort: 30001
 Node:

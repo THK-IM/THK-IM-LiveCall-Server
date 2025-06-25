@@ -36,5 +36,6 @@ type LiveCallConfig struct {
 	Rtc              *Rtc   `yaml:"Rtc"`
 	Cache            *Cache `yaml:"Cache"`
 	Stat             *Stat  `yaml:"Stat"`
+	SignalType       int    `yaml:"SignalType"`
 	*baseConf.Config `yaml:",inline"`
 }
