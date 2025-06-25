@@ -40,6 +40,8 @@ Sdks:
     Endpoint: "http://user-api.thkim.com:10000"
   - Name: msg_api
     Endpoint: "http://msg-api.thkim.com:20000"
+  - Name: check_api
+    Endpoint: "http://msg-api.thkim.com:20000"
 Cache:
   Cluster: Cluster
   RedisSource:

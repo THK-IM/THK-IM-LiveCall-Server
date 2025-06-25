@@ -5,6 +5,7 @@ import (
 	"github.com/thk-im/thk-im-base-server/server"
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
 	"github.com/thk-im/thk-im-livecall-server/pkg/loader"
+	"github.com/thk-im/thk-im-livecall-server/pkg/sdk"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/room/cache"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
@@ -55,6 +56,13 @@ func (c *Context) LoginApi() msgSdk.LoginApi {
 
 func (c *Context) MsgApi() msgSdk.MsgApi {
 	return c.Context.SdkMap["msg_api"].(msgSdk.MsgApi)
+}
+
+func (c *Context) CheckApi() sdk.CheckApi {
+	if c.Context.SdkMap["check_api"] == nil {
+		return nil
+	}
+	return c.Context.SdkMap["check_api"].(sdk.CheckApi)
 }
 
 func (c *Context) StartServe() {
