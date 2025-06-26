@@ -11,13 +11,13 @@ type Callback interface {
 	// OnPusherConnected 连接
 	OnPusherConnected(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
 	// OnPusherSteaming 正在推流
-	OnPusherSteaming(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
+	OnPusherSteaming(roomId, key, subKey string, uid int64, time int64, claims baseDto.ThkClaims)
 	// OnPusherClosed 关闭
 	OnPusherClosed(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
 	// OnPullerConnected 关闭
 	OnPullerConnected(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
 	// OnPullStreaming 正在拉流
-	OnPullStreaming(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
+	OnPullStreaming(roomId, key, subKey string, uid int64, time int64, claims baseDto.ThkClaims)
 	// OnPullerClosed 关闭
 	OnPullerClosed(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims)
 	// OnDataChannelEvent 数据通道事件

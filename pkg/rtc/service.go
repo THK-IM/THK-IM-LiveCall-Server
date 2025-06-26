@@ -254,56 +254,44 @@ func (r serviceImpl) OnPusherConnected(roomId, key, subKey string, uId int64, cl
 		}
 
 		// 房间服务更新参与人
-		if err = r.appCtx.RoomService().OnParticipantJoin(roomId, key, pusherJoinTime, role, uId); err != nil {
+		participants, errParticipants := r.appCtx.RoomService().OnParticipantJoin(roomId, key, pusherJoinTime, role, uId)
+		if errParticipants != nil {
 			r.logger.Error("OnParticipantJoin err:", err)
 		}
-
-		// 当前用户请求加入房间的时间
-		requestJoinTime, errJ := r.appCtx.RoomService().GetRequestJoinRoomTime(roomId, uId)
-		if errJ != nil {
-			r.logger.Error("GetRequestJoinRoomTime err:", err)
-		}
-
-		// 遍历房间参与人，看谁是在自己请求加入到正式加入之间进入的房间的用户，通过channel下发给当前参与人
-		if rm, errRoom := r.appCtx.RoomService().FindRoomById(roomId); errRoom == nil {
-			if rm != nil {
-				for _, p := range rm.Participants {
-					r.logger.Tracef("notifyClientNewStream uId: %d p: %d, JoinTime: %d, requestJoinTime: %d, pusherJoinTime: %d", uId, p.UId, p.JoinTime, requestJoinTime, pusherJoinTime)
-					if p.JoinTime < pusherJoinTime && p.JoinTime > requestJoinTime {
-						event = &PublishEvent{
-							RoomId:    roomId,
-							UId:       p.UId,
-							StreamKey: *p.StreamKey,
-							Role:      p.Role,
-						}
-						msg, errJson := json.Marshal(event)
-						if errJson != nil {
-							r.logger.Errorf("notifyClientNewStream json err, %v", event)
-						}
-						if dc := pusher.dcMap[""]; dc != nil {
-							notifyMsg := NewStreamNotify(string(msg))
-							if notifyMsg != nil {
-								if e := dc.SendText(*notifyMsg); e != nil {
-									r.logger.Errorf("notifyClientNewStream, %s , uid: %d, event uid:%d", e.Error(), pusher.UId(), p.UId)
-								}
-							}
-						} else {
-							r.logger.Tracef("notifyClientNewStream, uid: %d , dc is not nil  event uid: %d ", pusher.UId(), p.UId)
+		// 通过默认DC通道发给自己
+		if dc := pusher.dcMap[""]; dc != nil {
+			for _, p := range participants {
+				event = &PublishEvent{
+					RoomId:    roomId,
+					UId:       p.UId,
+					StreamKey: *p.StreamKey,
+					Role:      p.Role,
+				}
+				if msg, errJson := json.Marshal(event); errJson == nil {
+					notifyMsg := NewStreamNotify(string(msg))
+					if notifyMsg != nil {
+						if e := dc.SendText(*notifyMsg); e != nil {
+							r.logger.Errorf("notifyClientNewStream, %s , uid: %d, event uid:%d", e.Error(), pusher.UId(), p.UId)
 						}
 					}
 				}
 			}
-		} else {
-			r.logger.Errorf("errRoom, %s ", errRoom.Error())
 		}
-
-		pusher.WriteKeyFrame()
 	}
 
 }
 
-func (r serviceImpl) OnPusherSteaming(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims) {
-
+func (r serviceImpl) OnPusherSteaming(roomId, key, subKey string, uid int64, time int64, claims baseDto.ThkClaims) {
+	// 30s通知一次
+	if time%(30*1000) != 0 {
+		return
+	}
+	go func() {
+		err := r.appCtx.RoomService().OnParticipantPushStreamEvent(roomId, key, uid, claims)
+		if err != nil {
+			r.logger.Error("OnPusherSteaming: ", roomId, uid, key, subKey, err)
+		}
+	}()
 }
 
 func (r serviceImpl) OnPusherClosed(roomId, key, subKey string, uId int64, claims baseDto.ThkClaims) {
@@ -348,7 +336,7 @@ func (r serviceImpl) OnPullerConnected(roomId, _, subKey string, _ int64, claims
 	// }
 }
 
-func (r serviceImpl) OnPullStreaming(roomId, key, subKey string, uid int64, claims baseDto.ThkClaims) {
+func (r serviceImpl) OnPullStreaming(roomId, key, subKey string, uid int64, time int64, claims baseDto.ThkClaims) {
 }
 
 func (r serviceImpl) OnPullerClosed(roomId, key, subKey string, _ int64, claims baseDto.ThkClaims) {

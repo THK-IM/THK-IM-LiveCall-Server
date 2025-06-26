@@ -386,6 +386,8 @@ func (c *Pusher) WriteKeyFrame() {
 					c.logger.Errorf("WriteKeyFrame, err: %s", err.Error())
 				}
 			}
+			t := time.Now().UnixMilli() - c.createTime
+			c.rtcService.Callback().OnPusherSteaming(c.RoomId(), c.Key(), "", c.UId(), t, c.claims)
 			c.mutex.RUnlock()
 			time.Sleep(2 * time.Second)
 		}
