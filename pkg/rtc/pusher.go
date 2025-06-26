@@ -8,6 +8,7 @@ import (
 	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 	"github.com/sirupsen/logrus"
+	baseDto "github.com/thk-im/thk-im-base-server/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
 	"io"
@@ -17,34 +18,30 @@ import (
 )
 
 type Pusher struct {
-	roomId             string
-	roomMode           int
-	key                string
-	uid                int64
-	createTime         int64
-	mutex              *sync.RWMutex
-	pullerMap          map[string]*Puller
-	onConnClosed       onConnClosed
-	onConnConnected    onConnConnected
-	onDataChannelEvent onDataChannelEvent
-	logger             *logrus.Entry
-	statService        stat.Service
-	statsGetter        *stats.Interceptor
-	interceptor        *stats.InterceptorFactory
-	clientSdp          *webrtc.SessionDescription
-	serverSdp          *webrtc.SessionDescription
-	peerConn           *webrtc.PeerConnection
-	trackMap           map[string]*webrtc.TrackLocalStaticRTP
-	dcMap              map[string]*webrtc.DataChannel
+	rtcService  Service
+	req         *dto.PublishReq
+	claims      baseDto.ThkClaims
+	roomMode    int
+	key         string
+	mutex       *sync.RWMutex
+	pullerMap   map[string]*Puller
+	logger      *logrus.Entry
+	statService stat.Service
+	statsGetter *stats.Interceptor
+	interceptor *stats.InterceptorFactory
+	clientSdp   *webrtc.SessionDescription
+	serverSdp   *webrtc.SessionDescription
+	peerConn    *webrtc.PeerConnection
+	trackMap    map[string]*webrtc.TrackLocalStaticRTP
+	dcMap       map[string]*webrtc.DataChannel
+	createTime  int64
 }
 
 func (c *Pusher) DcMap() map[string]*webrtc.DataChannel {
 	return c.dcMap
 }
 
-func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomMode int, uid int64, roomId, key, offerSdp string,
-	statService stat.Service, onConnConnected onConnConnected, onConnClosed onConnClosed,
-	onDataChannelEvent onDataChannelEvent) (*Pusher, error) {
+func MakePusher(rtcService Service, req *dto.PublishReq, claims baseDto.ThkClaims, roomMode int, key string) (*Pusher, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
@@ -59,11 +56,11 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 	}
 	var statsGetter *stats.Interceptor
 	statsInterceptorFactory.OnNewPeerConnection(func(s string, getter stats.Getter) {
-		logger.Tracef("OnNewPeerConnection, interceptor, %s", s)
+		rtcService.Logger().Tracef("OnNewPeerConnection, interceptor, %s", s)
 		statsGetter, _ = getter.(*stats.Interceptor)
 	})
 	i.Add(statsInterceptorFactory)
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(*settingEngine))
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(*rtcService.RTCEngine()))
 	pc, err := api.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		return nil, err
@@ -89,7 +86,7 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 	dcMap := make(map[string]*webrtc.DataChannel)
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
-		SDP:  offerSdp,
+		SDP:  req.OfferSdp,
 	}
 	err = pc.SetRemoteDescription(offer)
 	if err != nil {
@@ -111,25 +108,21 @@ func MakePusher(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, roomM
 	<-gatherComplete
 	answer = *(pc.LocalDescription())
 	return &Pusher{
-		roomId:             roomId,
-		roomMode:           roomMode,
-		uid:                uid,
-		key:                key,
-		dcMap:              dcMap,
-		clientSdp:          &offer,
-		serverSdp:          &answer,
-		mutex:              &sync.RWMutex{},
-		peerConn:           pc,
-		statsGetter:        statsGetter,
-		statService:        statService,
-		onConnConnected:    onConnConnected,
-		onDataChannelEvent: onDataChannelEvent,
-		onConnClosed:       onConnClosed,
-		interceptor:        statsInterceptorFactory,
-		logger:             logger.WithField("Pusher", key),
-		trackMap:           make(map[string]*webrtc.TrackLocalStaticRTP),
-		pullerMap:          make(map[string]*Puller),
-		createTime:         time.Now().UnixMilli(),
+		rtcService:  rtcService,
+		claims:      claims,
+		roomMode:    roomMode,
+		key:         key,
+		dcMap:       dcMap,
+		clientSdp:   &offer,
+		serverSdp:   &answer,
+		mutex:       &sync.RWMutex{},
+		peerConn:    pc,
+		statsGetter: statsGetter,
+		interceptor: statsInterceptorFactory,
+		logger:      rtcService.Logger().WithField("Pusher", key),
+		trackMap:    make(map[string]*webrtc.TrackLocalStaticRTP),
+		pullerMap:   make(map[string]*Puller),
+		createTime:  time.Now().UnixMilli(),
 	}, nil
 }
 
@@ -139,6 +132,18 @@ func (c *Pusher) TrackMap() map[string]*webrtc.TrackLocalStaticRTP {
 
 func (c *Pusher) Key() string {
 	return c.key
+}
+
+func (c *Pusher) SubKey() string {
+	return ""
+}
+
+func (c *Pusher) UId() int64 {
+	return c.req.UId
+}
+
+func (c *Pusher) RoomId() string {
+	return c.req.RoomId
 }
 
 func (c *Pusher) ServerSdp() *webrtc.SessionDescription {
@@ -182,60 +187,54 @@ func (c *Pusher) Serve() {
 
 func (c *Pusher) OnDataChannel(d *webrtc.DataChannel) {
 	if c.roomMode == dto.ModeChat {
-		c.onConnConnected(c.roomId, c.key, "", c.uid)
+		c.rtcService.Callback().OnPusherConnected(c.req.RoomId, c.key, "", c.req.UId, c.claims)
 	}
 	d.OnOpen(func() {
 		c.dcMap[d.Label()] = d
-		c.logger.Trace("Datachannel OnOpen: ", d.Label(), c.uid)
-		if c.onDataChannelEvent != nil {
-			ordered := d.Ordered()
-			protocol := d.Protocol()
-			negotiated := d.Negotiated()
-			event := &DataChannelEvent{
-				StreamKey: c.key,
-				Label:     d.Label(),
-				RoomId:    c.roomId,
-				Uid:       c.uid,
-				EventType: DataChannelNewEvent,
-				Channel: &webrtc.DataChannelInit{
-					Ordered:           &ordered,
-					MaxPacketLifeTime: d.MaxPacketLifeTime(),
-					MaxRetransmits:    d.MaxRetransmits(),
-					Protocol:          &protocol,
-					Negotiated:        &negotiated,
-					ID:                d.ID(),
-				},
-			}
-			c.onDataChannelEvent(event)
+		c.logger.Trace("Datachannel OnOpen: ", d.Label(), c.req.UId)
+		ordered := d.Ordered()
+		protocol := d.Protocol()
+		negotiated := d.Negotiated()
+		event := &DataChannelEvent{
+			StreamKey: c.key,
+			Label:     d.Label(),
+			RoomId:    c.RoomId(),
+			Uid:       c.UId(),
+			EventType: DataChannelNewEvent,
+			Channel: &webrtc.DataChannelInit{
+				Ordered:           &ordered,
+				MaxPacketLifeTime: d.MaxPacketLifeTime(),
+				MaxRetransmits:    d.MaxRetransmits(),
+				Protocol:          &protocol,
+				Negotiated:        &negotiated,
+				ID:                d.ID(),
+			},
 		}
+		c.rtcService.Callback().OnDataChannelEvent(event, c.claims)
 	})
 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
 		c.logger.Trace("Datachannel OnMessage: ", d.Label())
-		if c.onDataChannelEvent != nil {
-			event := &DataChannelEvent{
-				StreamKey: c.key,
-				Label:     d.Label(),
-				RoomId:    c.roomId,
-				Uid:       c.uid,
-				EventType: DataChannelMsgEvent,
-				Message:   &msg,
-			}
-			c.onDataChannelEvent(event)
+		event := &DataChannelEvent{
+			StreamKey: c.key,
+			Label:     d.Label(),
+			RoomId:    c.RoomId(),
+			Uid:       c.UId(),
+			EventType: DataChannelMsgEvent,
+			Message:   &msg,
 		}
+		c.rtcService.Callback().OnDataChannelEvent(event, c.claims)
 	})
 	d.OnClose(func() {
 		c.logger.Trace("Datachannel OnClose: ", d.Label())
-		if c.onDataChannelEvent != nil {
-			event := &DataChannelEvent{
-				StreamKey: c.key,
-				Label:     d.Label(),
-				RoomId:    c.roomId,
-				Uid:       c.uid,
-				EventType: DataChannelCloseEvent,
-			}
-			c.dcMap[event.Label] = d
-			c.onDataChannelEvent(event)
+		event := &DataChannelEvent{
+			StreamKey: c.key,
+			Label:     d.Label(),
+			RoomId:    c.RoomId(),
+			Uid:       c.UId(),
+			EventType: DataChannelCloseEvent,
 		}
+		c.dcMap[event.Label] = d
+		c.rtcService.Callback().OnDataChannelEvent(event, c.claims)
 	})
 	d.OnError(func(err error) {
 		c.logger.Error("data channel err: ", err)
@@ -259,7 +258,7 @@ func (c *Pusher) ReceiveDataChannelEvent(event *DataChannelEvent) {
 		}
 	} else if event.EventType == DataChannelMsgEvent {
 		d := c.dcMap[event.Label]
-		c.logger.Error("ReceiveDataChannelEvent DataChannelMsgEvent event: ", string(event.Message.Data), ", msg: ", c.uid)
+		c.logger.Error("ReceiveDataChannelEvent DataChannelMsgEvent event: ", string(event.Message.Data), ", msg: ", c.UId())
 		if d != nil {
 			if event.Message.IsString {
 				dataChannelMsg := DataChanelMsg(string(event.Message.Data))
@@ -291,7 +290,7 @@ func (c *Pusher) ReceiveDataChannelEvent(event *DataChannelEvent) {
 
 func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 	track, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability,
-		fmt.Sprintf("%s/id/%d", remote.Kind().String(), c.uid), fmt.Sprintf("%s/stream/%d", remote.Kind().String(), c.uid),
+		fmt.Sprintf("%s/id/%d", remote.Kind().String(), c.UId()), fmt.Sprintf("%s/stream/%d", remote.Kind().String(), c.UId()),
 	)
 	if err != nil {
 		return
@@ -299,12 +298,12 @@ func (c *Pusher) OnTrack(remote *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
 		c.trackMap[strconv.Itoa(int(remote.SSRC()))] = track
 	}
 	if (c.roomMode == dto.ModeAudio || c.roomMode == dto.ModeVoiceRoom) && remote.Kind() == webrtc.RTPCodecTypeAudio {
-		c.onConnConnected(c.roomId, c.key, "", c.uid)
+		c.rtcService.Callback().OnPusherConnected(c.RoomId(), c.key, "", c.UId(), c.claims)
 	} else if c.roomMode == dto.ModeVideo && remote.Kind() == webrtc.RTPCodecTypeVideo {
-		c.onConnConnected(c.roomId, c.key, "", c.uid)
+		c.rtcService.Callback().OnPusherConnected(c.RoomId(), c.key, "", c.UId(), c.claims)
 	}
 	go func(ssrc uint32) {
-		initSt := stat.NewStat(remote.ID(), c.key, int64(remote.Kind()), "", c.roomId, c.uid)
+		initSt := stat.NewStat(remote.ID(), c.key, int64(remote.Kind()), "", c.RoomId(), c.UId())
 		currentLost := int64(0)
 		for {
 			time.Sleep(time.Second) // 1s收集一次
@@ -394,7 +393,7 @@ func (c *Pusher) WriteKeyFrame() {
 }
 
 func (c *Pusher) Stop() {
-	c.logger.Trace("Stop:", c.uid, c.key)
+	c.logger.Trace("Stop:", c.UId(), c.key)
 	c.mutex.Lock()
 	if c.dcMap != nil {
 		if len(c.dcMap) > 0 {
@@ -420,11 +419,8 @@ func (c *Pusher) Stop() {
 		}
 	}
 	c.mutex.Unlock()
-	c.logger.Trace("Stop: call onConnClosed ", c.uid, c.key)
-	if c.onConnClosed != nil {
-		c.onConnClosed(c.roomId, c.key, "", c.uid)
-		c.onConnClosed = nil
-	}
+	c.logger.Trace("Stop: call onConnClosed ", c.UId(), c.key)
+	c.rtcService.Callback().OnPusherClosed(c.RoomId(), c.key, "", c.UId(), c.claims)
 	if len(c.pullerMap) > 0 {
 		for _, v := range c.pullerMap {
 			v.Stop()

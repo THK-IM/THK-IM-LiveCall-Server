@@ -30,8 +30,6 @@ type Service interface {
 	FindRoomById(id string) (*dto.Room, error)
 	// DestroyRoom  通过id销毁房间
 	DestroyRoom(id string) error
-	// NodePublicIp 所在节点公网ip地址
-	NodePublicIp() string
 	// RequestJoinRoom 请求加入房间
 	RequestJoinRoom(req *dto.RoomJoinReq) (*dto.Room, error)
 	// GetRequestJoinRoomTime 获取用户请求加入房间的时间戳
@@ -58,11 +56,6 @@ type ServiceImpl struct {
 	cache    cache.RoomCache
 	node     *snowflake.Node
 	checkApi sdk.CheckApi
-	publicIp string
-}
-
-func (r ServiceImpl) NodePublicIp() string {
-	return r.publicIp
 }
 
 func (r ServiceImpl) CreateRoom(req *dto.RoomCreateReq) (*dto.Room, error) {

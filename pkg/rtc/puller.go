@@ -7,33 +7,31 @@ import (
 	"github.com/pion/interceptor/pkg/stats"
 	"github.com/pion/webrtc/v4"
 	"github.com/sirupsen/logrus"
+	baseDto "github.com/thk-im/thk-im-base-server/dto"
+	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/service/stat"
 	"sync"
 	"time"
 )
 
 type Puller struct {
-	roomId          string
-	uid             int64
-	key             string
-	subKey          string
-	createTime      int64
-	mutex           *sync.RWMutex
-	clientSdp       *webrtc.SessionDescription
-	serverSdp       *webrtc.SessionDescription
-	peerConn        *webrtc.PeerConnection
-	interceptor     *stats.InterceptorFactory
-	statsGetter     *stats.Interceptor
-	logger          *logrus.Entry
-	statService     stat.Service
-	onConnClosed    onConnClosed
-	onConnConnected onConnConnected
+	rtcService  Service
+	req         *dto.PlayReq
+	claims      baseDto.ThkClaims
+	key         string
+	subKey      string
+	mutex       *sync.RWMutex
+	clientSdp   *webrtc.SessionDescription
+	serverSdp   *webrtc.SessionDescription
+	peerConn    *webrtc.PeerConnection
+	interceptor *stats.InterceptorFactory
+	statsGetter *stats.Interceptor
+	logger      *logrus.Entry
+	statService stat.Service
+	createTime  int64
 }
 
-func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid int64, roomId, subKey, offerSdp string,
-	trackMap map[string]*webrtc.TrackLocalStaticRTP, statService stat.Service,
-	onConnConnected onConnConnected, onConnClosed onConnClosed,
-) (*Puller, error) {
+func MakePuller(rtcService Service, req *dto.PlayReq, claims baseDto.ThkClaims, trackMap map[string]*webrtc.TrackLocalStaticRTP) (*Puller, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
@@ -55,12 +53,12 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 	}
 	var statsGetter *stats.Interceptor
 	statsInterceptorFactory.OnNewPeerConnection(func(s string, getter stats.Getter) {
-		logger.Tracef("OnNewPeerConnection, interceptor, %s", s)
+		rtcService.Logger().Tracef("OnNewPeerConnection, interceptor, %s", s)
 		statsGetter, _ = getter.(*stats.Interceptor)
 	})
 	i.Add(statsInterceptorFactory)
 
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(*settingEngine))
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(*rtcService.RTCEngine()))
 	pc, err := api.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		return nil, err
@@ -75,7 +73,7 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
-		SDP:  offerSdp,
+		SDP:  req.OfferSdp,
 	}
 	err = pc.SetRemoteDescription(offer)
 	if err != nil {
@@ -96,28 +94,38 @@ func MakePuller(settingEngine *webrtc.SettingEngine, logger *logrus.Entry, uid i
 	}
 	<-gatherComplete
 	answer = *(pc.CurrentLocalDescription())
-	key := fmt.Sprintf(SubscribeStreamKey, subKey, uid)
+	key := fmt.Sprintf(SubscribeStreamKey, req.StreamKey, req.UId)
 	return &Puller{
-		roomId:          roomId,
-		uid:             uid,
-		key:             key,
-		subKey:          subKey,
-		createTime:      time.Now().UnixMilli(),
-		mutex:           &sync.RWMutex{},
-		clientSdp:       &offer,
-		serverSdp:       &answer,
-		peerConn:        pc,
-		interceptor:     statsInterceptorFactory,
-		statsGetter:     statsGetter,
-		logger:          logger.WithField("room", roomId).WithField("uid", uid).WithField("subKey", subKey),
-		onConnClosed:    onConnClosed,
-		onConnConnected: onConnConnected,
-		statService:     statService,
+		rtcService:  rtcService,
+		req:         req,
+		claims:      claims,
+		key:         key,
+		mutex:       &sync.RWMutex{},
+		clientSdp:   &offer,
+		serverSdp:   &answer,
+		peerConn:    pc,
+		interceptor: statsInterceptorFactory,
+		statsGetter: statsGetter,
+		logger:      rtcService.Logger().WithField("room", req.RoomId).WithField("uid", req.UId).WithField("subKey", req.StreamKey),
+		statService: rtcService.StatService(),
+		createTime:  time.Now().UnixMilli(),
 	}, nil
 }
 
 func (c *Puller) Key() string {
 	return c.key
+}
+
+func (c *Puller) SubKey() string {
+	return c.subKey
+}
+
+func (c *Puller) UId() int64 {
+	return c.req.UId
+}
+
+func (c *Puller) RoomId() string {
+	return c.req.RoomId
 }
 
 func (c *Puller) ServerSdp() *webrtc.SessionDescription {
@@ -143,13 +151,13 @@ func (c *Puller) Serve() {
 }
 
 func (c *Puller) onConnected() {
-	c.onConnConnected(c.roomId, c.key, c.subKey, c.uid)
+	c.rtcService.Callback().OnPullerConnected(c.RoomId(), c.Key(), c.SubKey(), c.UId(), c.claims)
 	senders := c.peerConn.GetSenders()
 	for _, sender := range senders {
 		encodings := sender.GetParameters().Encodings
 		rtcpBuf := make([]byte, 1500)
 		for _, en := range encodings {
-			initSt := stat.NewStat(sender.Track().ID(), c.key, int64(sender.Track().Kind()), c.subKey, c.roomId, c.uid)
+			initSt := stat.NewStat(sender.Track().ID(), c.key, int64(sender.Track().Kind()), c.SubKey(), c.RoomId(), c.UId())
 			go func(_en webrtc.RTPEncodingParameters) {
 				currentLost := int64(0)
 				for {
@@ -208,8 +216,5 @@ func (c *Puller) Stop() {
 		}
 	}
 	c.mutex.Unlock()
-	if c.onConnClosed != nil {
-		c.onConnClosed(c.roomId, c.key, c.subKey, c.uid)
-		c.onConnClosed = nil
-	}
+	c.rtcService.Callback().OnPullerConnected(c.RoomId(), c.Key(), c.SubKey(), c.UId(), c.claims)
 }

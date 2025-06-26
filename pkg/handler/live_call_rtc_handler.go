@@ -34,7 +34,8 @@ func publishStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc 
 			return
 		}
 
-		if conn, err := rtcService.RequestPublish(req.RoomId, string(offer), req.UId); err != nil {
+		req.OfferSdp = string(offer)
+		if conn, err := rtcService.RequestPublish(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("publish %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
@@ -68,7 +69,7 @@ func playStream(appCtx *app.Context, rtcService rtc.Service) gin.HandlerFunc {
 		}
 		req.OfferSdp = string(offer)
 		appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("playStream offer %s", req.OfferSdp)
-		if answer, streamKey, err := rtcService.RequestPlay(req); err != nil {
+		if answer, streamKey, err := rtcService.RequestPlay(req, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("playStream %v %s", req, err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {

@@ -2,6 +2,8 @@ package rtc
 
 import (
 	"github.com/pion/webrtc/v4"
+	baseDto "github.com/thk-im/thk-im-base-server/dto"
+	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 )
 
 const (
@@ -22,10 +24,8 @@ const (
 
 // RequestSubscribeEvent 请求订阅事件结构
 type RequestSubscribeEvent struct {
-	RoomId    string `json:"room_id"`    // 房间id
-	OfferSdp  string `json:"offer_sdp"`  // rtc建立连接sdp
-	StreamKey string `json:"stream_key"` // 需要订阅的流key
-	Uid       int64  `json:"uid"`        // 用户id
+	Req    *dto.PlayReq      `json:"req"`
+	Claims baseDto.ThkClaims `json:"claims"`
 }
 
 // ResponseSubscribeEvent 响应订阅事件结构

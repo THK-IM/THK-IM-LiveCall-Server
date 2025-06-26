@@ -9,5 +9,5 @@ import (
 )
 
 func LoadRoomService(node *snowflake.Node, cacheService cache.RoomCache, checkApi sdk.CheckApi, logger *logrus.Entry) room.Service {
-	return room.NewService(node, cacheService, logger)
+	return room.NewService(node, cacheService, checkApi, logger)
 }

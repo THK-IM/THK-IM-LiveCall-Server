@@ -44,7 +44,7 @@ func (c *Context) Init(config *conf.LiveCallConfig) {
 	c.Context.SdkMap = loader.LoadSdks(c.Config().Sdks, c.Logger())
 	logger := c.Context.Logger()
 	cacheService := loader.LoadRoomCache(config.Cache, logger)
-	c.roomService = loader.LoadRoomService(c.SnowflakeNode(), cacheService, logger)
+	c.roomService = loader.LoadRoomService(c.SnowflakeNode(), cacheService, c.CheckApi(), logger)
 	c.statService = loader.LoadStatService(config.Stat, logger)
 	c.roomCache = cacheService
 	c.signalType = config.SignalType
