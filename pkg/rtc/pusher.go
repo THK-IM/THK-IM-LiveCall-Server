@@ -109,6 +109,7 @@ func MakePusher(rtcService Service, req *dto.PublishReq, claims baseDto.ThkClaim
 	answer = *(pc.LocalDescription())
 	return &Pusher{
 		rtcService:  rtcService,
+		req:         req,
 		claims:      claims,
 		roomMode:    roomMode,
 		key:         key,
