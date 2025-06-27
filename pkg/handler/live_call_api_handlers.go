@@ -7,13 +7,13 @@ import (
 )
 
 func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
-
 	httpEngine := appCtx.HttpEngine()
 	loginApi := appCtx.LoginApi()
 	userTokenAuth := msgsdk.UserTokenAuth(loginApi, appCtx.Logger())
 	httpEngine.Use(userTokenAuth)
+	liveCallRoute := httpEngine.Group("/live_call")
 
-	room := httpEngine.Group("/room")
+	room := liveCallRoute.Group("/room")
 	room.POST("", createRoom(appCtx))
 	room.POST("/call", callRoomMembers(appCtx))
 	room.POST("/cancel_call", cancelCallRoomMembers(appCtx))
@@ -25,7 +25,7 @@ func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 	room.POST("/member/leave", leaveRoomMember(appCtx))
 	room.DELETE("", deleteRoom(appCtx))
 
-	stream := httpEngine.Group("/stream")
+	stream := liveCallRoute.Group("/stream")
 	stream.POST("/publish", publishStream(appCtx, rtcService))
 	stream.POST("/play", playStream(appCtx, rtcService))
 }
