@@ -388,12 +388,10 @@ github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXl
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/thk-im/thk-im-base-server v0.0.0-20250624065922-c679ca88221a h1:u4p0JN7KyY6y+NQmgKTp06UfjwH3LFAbtoeAarUEX/Y=
-github.com/thk-im/thk-im-base-server v0.0.0-20250624065922-c679ca88221a/go.mod h1:YgEduI+s3fAJUata8E3vV9oFB7mcu3m1dHCKZSuAxQM=
-github.com/thk-im/thk-im-msgapi-server v0.0.0-20250622144417-260959dba2a7 h1:Lq+RscrxcfJRgmgB88tO9xLNKN3Ld7b2JDDH5LCR+k4=
-github.com/thk-im/thk-im-msgapi-server v0.0.0-20250622144417-260959dba2a7/go.mod h1:v807t4Mqdamn//s7pbJDUuj+WbebPIGYhY7bSNqnsEU=
-github.com/thk-im/thk-im-user-server v0.0.0-20241109060644-de08464a9bfa h1:vaA5JKcS2nr4M1z0PnjPCj3u67lK34h0JnADe1FA6n8=
-github.com/thk-im/thk-im-user-server v0.0.0-20241109060644-de08464a9bfa/go.mod h1:C3MmxqQ8eR7tqlvDKOlXGYWMATKZ3dPluzmvF+LK7Ag=
+github.com/thk-im/thk-im-base-server v0.0.0-20251109092344-58e28fa8d8af h1:VAsu4kiOFzlp+KlPOmYC+h0tG3Igrc4dNO2pWLcqqcs=
+github.com/thk-im/thk-im-base-server v0.0.0-20251109092344-58e28fa8d8af/go.mod h1:YgEduI+s3fAJUata8E3vV9oFB7mcu3m1dHCKZSuAxQM=
+github.com/thk-im/thk-im-msgapi-server v0.0.0-20251109125552-0b2788b0f3fa h1:6DdgjKgAaH3tFl7ggoRy/D671sCuG7jPqyMP4G4AUOs=
+github.com/thk-im/thk-im-msgapi-server v0.0.0-20251109125552-0b2788b0f3fa/go.mod h1:iOFHcIqJn7vRJXDoJMoqMsvbmNxxZSGNyNo5N0dCxpI=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tinylib/msgp v1.3.0 h1:ULuf7GPooDaIlbyvgAxBV/FI7ynli6LZ1/nVUNu+0ww=
 github.com/tinylib/msgp v1.3.0/go.mod h1:ykjzy2wzgrlvpDCRc4LA8UXy6D8bzMSuAF3WD57Gok0=

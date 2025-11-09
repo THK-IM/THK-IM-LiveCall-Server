@@ -7,6 +7,7 @@ toolchain go1.23.2
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.30.0
 	github.com/gin-gonic/gin v1.10.1
+	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/uuid v1.6.0
 	github.com/pion/ice/v4 v4.0.2
 	github.com/pion/interceptor v0.1.39
@@ -15,8 +16,8 @@ require (
 	github.com/pion/webrtc/v4 v4.0.2
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/thk-im/thk-im-base-server v0.0.0-20250624065922-c679ca88221a
-	github.com/thk-im/thk-im-msgapi-server v0.0.0-20250622144417-260959dba2a7
+	github.com/thk-im/thk-im-base-server v0.0.0-20251109092344-58e28fa8d8af
+	github.com/thk-im/thk-im-msgapi-server v0.0.0-20251109125552-0b2788b0f3fa
 	github.com/zoumo/goset v0.2.0
 )
 
@@ -63,7 +64,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
-	github.com/go-resty/resty/v2 v2.16.5 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
