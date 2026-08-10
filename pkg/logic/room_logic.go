@@ -1,82 +1,77 @@
 package logic
 
 import (
+	"time"
+
+	"github.com/sirupsen/logrus"
 	baseDto "github.com/thk-im/thk-im-base-server/dto"
 	baseErrorx "github.com/thk-im/thk-im-base-server/errorx"
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/dto"
 	"github.com/thk-im/thk-im-livecall-server/pkg/errorx"
-	msgDto "github.com/thk-im/thk-im-msgapi-server/pkg/dto"
-	"time"
+	"github.com/thk-im/thk-im-livecall-server/pkg/service/room"
+	"github.com/thk-im/thk-im-livecall-server/pkg/service/signal"
 )
 
 type RoomLogic struct {
-	appCtx *app.Context
+	appCtx        *app.Context
+	roomService   room.Service
+	signalService signal.Service
 }
 
 func NewRoomLogic(appCtx *app.Context) *RoomLogic {
-	return &RoomLogic{appCtx: appCtx}
+	return &RoomLogic{
+		appCtx:        appCtx,
+		roomService:   room.NewCloudflareSFURoomService(appCtx),
+		signalService: signal.NewSignalService(appCtx),
+	}
 }
 
-func (l RoomLogic) CreateRoom(req *dto.RoomCreateReq, claims baseDto.ThkClaims) (*dto.Room, error) {
-	checkApi := l.appCtx.CheckApi()
-	if checkApi != nil {
-		checkReq := &dto.CheckLiveCallCreateReq{
-			UId:      req.UId,
-			RoomType: req.Mode,
-		}
-		errCheck := checkApi.CheckLiveCallCreate(checkReq, claims)
-		if errCheck != nil {
-			return nil, errCheck
-		}
-	}
-	return l.appCtx.RoomService().CreateRoom(req)
+func (l RoomLogic) CreateRoom(req *dto.RoomCreateReq, claims baseDto.ThkClaims) (*dto.RoomJoinResp, error) {
+	return l.roomService.CreateRoom(req, claims)
 }
 
 func (l RoomLogic) QueryRoom(id string, claims baseDto.ThkClaims) (*dto.Room, error) {
-	return l.appCtx.RoomService().FindRoomById(id)
+	return l.roomService.FindRoomById(id, claims)
 }
 
-func (l RoomLogic) JoinRoom(req *dto.RoomJoinReq, claims baseDto.ThkClaims) (*dto.Room, error) {
-	room, err := l.appCtx.RoomService().RequestJoinRoom(req)
+func (l RoomLogic) JoinRoom(req *dto.RoomJoinReq, claims baseDto.ThkClaims) (*dto.RoomJoinResp, error) {
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return nil, err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return nil, errorx.ErrRoomNotExisted
 	}
 
-	checkApi := l.appCtx.CheckApi()
-	if checkApi != nil {
-		checkReq := &dto.CheckLiveJoinReq{
-			UId:  req.UId,
-			Room: room,
-		}
-		errCheck := checkApi.CheckLiveCallJoin(checkReq, claims)
-		if errCheck != nil {
-			return nil, errCheck
-		}
+	resp, errRequestJoin := l.roomService.RequestJoinRoom(req, claims)
+	if errRequestJoin != nil {
+		return nil, errRequestJoin
 	}
 
-	signal := dto.MakeAcceptRequestSignal(
-		room.Id, "", req.UId, time.Now().UnixMilli(),
-	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        []int64{room.OwnerId},
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
+	{
+		members := make([]int64, 0)
+		for _, p := range roomVo.Participants {
+			if p.UId != req.UId {
+				members = append(members, p.UId)
+			}
+		}
+
+		s := dto.MakeAcceptRequestSignal(
+			roomVo.Id, "", req.UId, time.Now().UnixMilli(),
+		)
+		_ = l.signalService.PushSignal(s, members, claims)
 	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
-	return room, errPush
+
+	return resp, nil
 }
 
 func (l RoomLogic) CallRoomMembers(req *dto.RoomCallReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return errorx.ErrRoomNotExisted
 	}
 
@@ -84,195 +79,205 @@ func (l RoomLogic) CallRoomMembers(req *dto.RoomCallReq, claims baseDto.ThkClaim
 		return baseErrorx.ErrParamsError
 	}
 
-	signal := dto.MakeBeingRequestedSignal(
-		room.Id, req.Members, room.Mode, req.Msg, req.UId, room.CreateTime,
+	memberMap := make(map[int64]*dto.Participant)
+	for _, member := range roomVo.Participants {
+		memberMap[member.UId] = member
+	}
+	for _, member := range req.Members {
+		if memberMap[member] == nil {
+			_ = l.roomService.AddRoomMember(roomVo.Id, member, claims)
+		}
+	}
+
+	s := dto.MakeBeingRequestedSignal(
+		roomVo.Id, req.Members, roomVo.Mode, req.Msg, req.UId, roomVo.CreateTime,
 		time.Now().UnixMilli()+req.Duration*1000,
 	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        req.Members,
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
-	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+	errPush := l.signalService.PushSignal(s, req.Members, claims)
 	return errPush
 }
 
 func (l RoomLogic) CancelCallRoomMembers(req *dto.CancelCallingReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return errorx.ErrRoomNotExisted
 	}
 
-	if len(req.Members) == 0 {
-		return baseErrorx.ErrParamsError
+	if len(req.Members) > 0 {
+		s := dto.MakeCancelRequestingSignal(
+			roomVo.Id, req.Msg, roomVo.CreateTime, time.Now().UnixMilli(),
+		)
+		errPush := l.signalService.PushSignal(s, req.Members, claims)
+		if errPush != nil {
+			return errPush
+		}
 	}
 
-	signal := dto.MakeCancelRequestingSignal(
-		room.Id, req.Msg, room.CreateTime, time.Now().UnixMilli(),
-	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        req.Members,
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
+	shouldEnd := false
+	joinedMembers := make([]int64, 0)
+	for _, p := range roomVo.Participants {
+		if p.JoinTime > 0 {
+			joinedMembers = append(joinedMembers, p.UId)
+		}
 	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
-	return errPush
+	if len(joinedMembers) > 1 {
+		shouldEnd = false
+	} else {
+		shouldEnd = true
+	}
+
+	if shouldEnd {
+		return l.roomService.DestroyRoom(roomVo.Id, claims)
+	}
+
+	return nil
 }
 
 func (l RoomLogic) InviteJoinRoom(req *dto.InviteJoinRoomReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return errorx.ErrRoomNotExisted
 	}
 
-	checkApi := l.appCtx.CheckApi()
-	if checkApi != nil {
-		checkReq := &dto.CheckLiveInviteReq{
-			Room:       room,
-			InviteUIds: req.InviteUIds,
-			RequestUId: req.UId,
-		}
-		errCheck := checkApi.CheckLiveCallInvite(checkReq, claims)
-		if errCheck != nil {
-			return errCheck
+	memberMap := make(map[int64]*dto.Participant)
+	for _, member := range roomVo.Participants {
+		memberMap[member.UId] = member
+	}
+	for _, member := range req.InviteUIds {
+		if memberMap[member] == nil {
+			_ = l.roomService.AddRoomMember(roomVo.Id, member, claims)
 		}
 	}
 
-	signal := dto.MakeBeingRequestedSignal(
-		room.Id, req.InviteUIds, room.Mode, req.Msg, req.UId, room.CreateTime,
+	s := dto.MakeBeingRequestedSignal(
+		roomVo.Id, req.InviteUIds, roomVo.Mode, req.Msg, req.UId, roomVo.CreateTime,
 		time.Now().UnixMilli()+req.Duration*1000,
 	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        req.InviteUIds,
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
-	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+	errPush := l.signalService.PushSignal(s, req.InviteUIds, claims)
 	return errPush
 }
 
 func (l RoomLogic) RefuseJoinRoom(req *dto.RefuseJoinRoomReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return errorx.ErrRoomNotExisted
 	}
 	members := make([]int64, 0)
-	for _, p := range room.Participants {
+	for _, p := range roomVo.Participants {
 		if p.UId != req.UId {
 			members = append(members, p.UId)
 		}
 	}
-	signal := dto.MakeRejectRequestSignal(
-		room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
-	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        members,
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
+
+	errRefuse := l.roomService.RefuseJoinRoom(req.RoomId, req.UId, req.IsBusy, claims)
+	if errRefuse != nil {
+		return errRefuse
 	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+
+	s := dto.MakeRejectRequestSignal(
+		roomVo.Id, req.Msg, req.UId, time.Now().UnixMilli(),
+	)
+
+	errPush := l.signalService.PushSignal(s, members, claims)
 	return errPush
 }
 
 func (l RoomLogic) RoomMemberLeave(req *dto.RoomMemberLeaveReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return nil
 	}
 	members := make([]int64, 0)
-	for _, p := range room.Participants {
+	for _, p := range roomVo.Participants {
 		members = append(members, p.UId)
 	}
 	if len(members) > 0 {
-		signal := dto.MakeHangupSignal(
-			room.Id, req.Msg, req.UId, time.Now().UnixMilli(),
+		s := dto.MakeHangupSignal(
+			roomVo.Id, req.Msg, req.UId, time.Now().UnixMilli(),
 		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        members,
-			Type:        l.appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+		errPush := l.signalService.PushSignal(s, members, claims)
 		return errPush
 	}
 	return nil
 }
 
 func (l RoomLogic) KickoffRoomMember(req *dto.KickoffMemberReq, claims baseDto.ThkClaims) error {
-	room, err := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, err := l.roomService.FindRoomById(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	if roomVo == nil {
 		return errorx.ErrRoomNotExisted
 	}
-	hasPermission := room.OwnerId == req.UId
+	hasPermission := roomVo.OwnerId == req.UId
 	if !hasPermission {
 		return errorx.ErrNoPermission
 	}
 	members := make([]int64, 0)
-	for _, p := range room.Participants {
+	for _, p := range roomVo.Participants {
 		members = append(members, p.UId)
 	}
-	signal := dto.MakeKickMemberSignal(
-		room.Id, req.Msg, req.UId, time.Now().UnixMilli(), req.KickoffUIds,
+	s := dto.MakeKickMemberSignal(
+		roomVo.Id, req.Msg, req.UId, time.Now().UnixMilli(), req.KickoffUIds,
 	)
-	pushMessage := &msgDto.PushMessageReq{
-		UIds:        members,
-		Type:        l.appCtx.SignalType(),
-		Body:        signal.JsonString(),
-		OfflinePush: true,
-	}
-	_, errPush := l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+	errPush := l.signalService.PushSignal(s, members, claims)
 	return errPush
 }
 
 func (l RoomLogic) DeleteRoom(req *dto.RoomDelReq, claims baseDto.ThkClaims) error {
-	room, errRoom := l.appCtx.RoomService().FindRoomById(req.RoomId)
+	roomVo, errRoom := l.roomService.FindRoomById(req.RoomId, claims)
 	if errRoom != nil {
 		return errRoom
 	}
-	if room == nil {
-		return errorx.ErrRoomNotExisted
+	if roomVo == nil {
+		l.appCtx.Logger().WithFields(logrus.Fields(claims)).Trace("deleteRoom roomVo is nil ", req)
+		return nil
 	}
-
-	err := l.appCtx.RoomService().DestroyRoom(req.RoomId)
+	if len(roomVo.Participants) > 0 {
+		members := make([]int64, 0)
+		for _, p := range roomVo.Participants {
+			members = append(members, p.UId)
+		}
+		s := dto.MakeEndCallSignal(
+			roomVo.Id, "", req.UId, time.Now().UnixMilli(),
+		)
+		errPush := l.signalService.PushSignal(s, members, claims)
+		if errPush != nil {
+			return errPush
+		}
+	}
+	err := l.roomService.DestroyRoom(req.RoomId, claims)
 	if err != nil {
 		return err
 	}
 
-	if len(room.Participants) > 0 {
-		members := make([]int64, 0)
-		for _, p := range room.Participants {
-			members = append(members, p.UId)
-		}
-		signal := dto.MakeEndCallSignal(
-			room.Id, "", req.UId, time.Now().UnixMilli(),
-		)
-		pushMessage := &msgDto.PushMessageReq{
-			UIds:        members,
-			Type:        l.appCtx.SignalType(),
-			Body:        signal.JsonString(),
-			OfflinePush: true,
-		}
-		_, _ = l.appCtx.MsgApi().PushMessage(pushMessage, claims)
+	return nil
+}
+
+func (l RoomLogic) OnUserJoinEvent(event *dto.RoomUserJoinEvent, claims baseDto.ThkClaims) error {
+	return l.roomService.OnUserJoinEvent(event, claims)
+}
+
+func (l RoomLogic) OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims baseDto.ThkClaims) error {
+	return l.roomService.OnUserLeaveEvent(event, claims)
+}
+
+func (l RoomLogic) OnUserPushEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error {
+	err := l.roomService.OnUserPushEvent(event, claims)
+	if err != nil {
+		l.appCtx.Logger().Error("OnUserPushEvent OnUserPushEvent", event, err, claims)
 	}
 	return nil
 }

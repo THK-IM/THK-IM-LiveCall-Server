@@ -2,8 +2,9 @@ package dto
 
 type (
 	CheckLiveCallCreateReq struct {
-		UId      int64 `json:"uid" form:"uid"` // 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
-		RoomType int   `json:"room_type" form:"room_type"`
+		UId       int64  `json:"uid" form:"uid"` // 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
+		RoomType  int    `json:"room_type" form:"room_type"`
+		SessionId *int64 `json:"session_id"` // 会话id
 	}
 
 	CheckLiveJoinReq struct {

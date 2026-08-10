@@ -21,6 +21,10 @@ const (
 	EndCall = 6
 	// KickMember 踢出通话成员
 	KickMember = 7
+	// ParticipantStartPush 新成员开始推流
+	ParticipantStartPush = 8
+	// ParticipantStopPush 成员停止推流
+	ParticipantStopPush = 9
 )
 
 type (
@@ -80,6 +84,20 @@ type (
 		KickIds  []int64 `json:"kick_ids"`
 		Msg      string  `json:"msg"`
 		KickTime int64   `json:"kick_time"`
+	}
+
+	ParticipantJoinSignal struct {
+		RoomId    string `json:"room_id"`
+		UId       int64  `json:"u_id"`
+		StreamKey string `json:"stream_key"`
+		Time      int64  `json:"time"`
+	}
+
+	ParticipantLeaveSignal struct {
+		RoomId    string `json:"room_id"`
+		UId       int64  `json:"u_id"`
+		StreamKey string `json:"stream_key"`
+		Time      int64  `json:"time"`
 	}
 )
 
@@ -183,6 +201,34 @@ func MakeKickMemberSignal(roomId string, msg string, uId, kickTime int64, kickId
 		return nil
 	}
 	return &LiveCallSignal{Type: KickMember, Body: string(signalJson)}
+}
+
+func MakeParticipantPushStreamSignal(roomId string, streamKey string, uId, time int64) *LiveCallSignal {
+	signal := &ParticipantJoinSignal{
+		RoomId:    roomId,
+		UId:       uId,
+		StreamKey: streamKey,
+		Time:      time,
+	}
+	signalJson, err := json.Marshal(signal)
+	if err != nil {
+		return nil
+	}
+	return &LiveCallSignal{Type: ParticipantStartPush, Body: string(signalJson)}
+}
+
+func MakeParticipantLeaveSignal(roomId string, streamKey string, uId, time int64) *LiveCallSignal {
+	signal := &ParticipantJoinSignal{
+		RoomId:    roomId,
+		UId:       uId,
+		StreamKey: streamKey,
+		Time:      time,
+	}
+	signalJson, err := json.Marshal(signal)
+	if err != nil {
+		return nil
+	}
+	return &LiveCallSignal{Type: ParticipantStopPush, Body: string(signalJson)}
 }
 
 func (l LiveCallSignal) JsonString() string {

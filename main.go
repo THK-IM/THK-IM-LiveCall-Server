@@ -5,7 +5,6 @@ import (
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
 	"github.com/thk-im/thk-im-livecall-server/pkg/conf"
 	"github.com/thk-im/thk-im-livecall-server/pkg/handler"
-	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
 )
 
 func main() {
@@ -17,9 +16,7 @@ func main() {
 
 	appCtx := &app.Context{}
 	appCtx.Init(config)
-	rtcService := rtc.NewRtcService(config.Rtc, appCtx)
-	rtcService.InitServer()
-	handler.RegisterRtcHandler(appCtx, rtcService)
+	handler.RegisterRtcHandler(appCtx)
 
 	appCtx.StartServe()
 }

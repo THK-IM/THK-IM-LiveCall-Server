@@ -6,4 +6,5 @@ var (
 	ErrRoomNotExisted   = errorx.NewErrorX(4004001, "RoomNotExisted")
 	ErrNoPermission     = errorx.NewErrorX(4004002, "NoPermission")
 	ErrPusherNotExisted = errorx.NewErrorX(4004003, "PusherNotExisted")
+	ErrRoomModeConflict = errorx.NewErrorX(4004004, "RoomModeConflict")
 )

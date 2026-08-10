@@ -1,15 +1,16 @@
 package handler
 
 import (
+	baseMiddleware "github.com/thk-im/thk-im-base-server/middleware"
 	"github.com/thk-im/thk-im-livecall-server/pkg/app"
-	"github.com/thk-im/thk-im-livecall-server/pkg/rtc"
 	msgsdk "github.com/thk-im/thk-im-msgapi-server/pkg/sdk"
 )
 
-func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
+func RegisterRtcHandler(appCtx *app.Context) {
 	httpEngine := appCtx.HttpEngine()
 	loginApi := appCtx.LoginApi()
 	userTokenAuth := msgsdk.UserTokenAuth(loginApi, appCtx.Logger())
+	ipAuth := baseMiddleware.WhiteIpAuth(appCtx.Config().IpWhiteList, appCtx.Logger())
 	httpEngine.Use(userTokenAuth)
 	liveCallRoute := httpEngine.Group("/live_call")
 
@@ -25,7 +26,15 @@ func RegisterRtcHandler(appCtx *app.Context, rtcService rtc.Service) {
 	room.POST("/member/leave", leaveRoomMember(appCtx))
 	room.DELETE("", deleteRoom(appCtx))
 
-	stream := liveCallRoute.Group("/stream")
-	stream.POST("/publish", publishStream(appCtx, rtcService))
-	stream.POST("/play", playStream(appCtx, rtcService))
+	rtcEvent := liveCallRoute.Group("/rtc_event")
+	rtcEvent.Use(ipAuth)
+	rtcEvent.POST("/user_join", rtcUserJoinEvent(appCtx))
+	rtcEvent.POST("/user_leave", rtcUserLeaveEvent(appCtx))
+	rtcEvent.POST("/user_push", rtcUserPushEvent(appCtx))
+
+	streamRoute := liveCallRoute.Group("/stream")
+	streamRoute.Use(userTokenAuth)
+	streamRoute.POST("/publish", publishStream(appCtx))
+	streamRoute.POST("/subscribe", subscribeStream(appCtx))
+	streamRoute.PUT("/status", updateStreamStatus(appCtx))
 }

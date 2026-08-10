@@ -8,10 +8,12 @@ const (
 )
 
 type Participant struct {
-	UId       int64   `json:"u_id"`                 // 用户id
-	Role      int     `json:"role"`                 // 1主播 2观众
-	JoinTime  int64   `json:"join_time"`            // 加入时间
-	StreamKey *string `json:"stream_key,omitempty"` // 推流key
+	UId       int64  `json:"u_id"`       // 用户id
+	Role      int    `json:"role"`       // 1推流 2观众
+	Refuse    int    `json:"refuse"`     // 是否拒绝 0未拒绝 1 拒绝 2 通话中拒绝
+	JoinTime  int64  `json:"join_time"`  // 加入时间
+	LeaveTime int64  `json:"leave_time"` // 离开时间
+	StreamKey string `json:"stream_key"` // 订阅流的key
 }
 
 func (r *Participant) Json() (string, error) {

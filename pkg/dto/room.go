@@ -13,7 +13,8 @@ type (
 
 	RoomCreateReq struct {
 		UId         int64        `json:"u_id"`
-		Mode        int          `json:"mode"` // 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
+		Mode        int          `json:"mode"`       // 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
+		SessionId   int64        `json:"session_id"` // 会话id
 		MediaParams *MediaParams `json:"media_params"`
 	}
 
@@ -43,10 +44,16 @@ type (
 		Role   int8   `json:"role"`
 	}
 
+	RoomJoinResp struct {
+		Room  *Room  `json:"room"`
+		Token string `json:"token"`
+	}
+
 	RefuseJoinRoomReq struct {
 		UId    int64  `json:"u_id"`
 		RoomId string `json:"room_id"`
 		Msg    string `json:"msg"`
+		IsBusy bool   `json:"is_busy"` // 是否正在通话中
 	}
 
 	InviteJoinRoomReq struct {
@@ -77,16 +84,21 @@ const (
 	ModeVideo     = 3
 	ModeVoiceRoom = 4
 	ModeVideoRoom = 5
+
+	RoomStatusInit   = 0 // 初始化状态
+	RoomStatusActive = 1 // 有人加入
 )
 
 // Room 房间
 type Room struct {
-	Id           string         `json:"id"`                     // 房间id
-	Mode         int            `json:"mode"`                   // 模式， 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
-	OwnerId      int64          `json:"owner_id"`               // 房间创建者id
-	CreateTime   int64          `json:"create_time"`            // 房间创建时间
-	MediaParams  *MediaParams   `json:"media_params"`           // 媒体参数
-	Participants []*Participant `json:"participants,omitempty"` // 房间实际参与人
+	Id           string         `json:"id"`           // 房间id
+	Engine       string         `json:"engine"`       // 房间RTC引擎
+	Mode         int            `json:"mode"`         // 模式， 1普通聊天 2语音电话 3视频电话 4语音房 5视频房
+	OwnerId      int64          `json:"owner_id"`     // 房间创建者id
+	CreateTime   int64          `json:"create_time"`  // 房间创建时间
+	SessionId    *int64         `json:"session_id"`   // sessionId
+	MediaParams  *MediaParams   `json:"media_params"` // 媒体参数
+	Participants []*Participant `json:"participants"` // 房间实际参与人
 }
 
 func (r *Room) Json() (string, error) {
