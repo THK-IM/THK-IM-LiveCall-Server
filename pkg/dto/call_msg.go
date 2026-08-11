@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type CallMsg struct {
 	RoomId      string  `json:"room_id"`
@@ -20,6 +23,7 @@ func BuildCallMsg(room *Room) CallMsg {
 	leaveTime := time.Now().UnixMilli()
 	joinedUIds := make([]int64, 0)
 	for _, p := range room.Participants {
+		fmt.Printf("BuildCallMsg %d %d", p.UId, p.JoinTime)
 		if p.UId != room.OwnerId {
 			if p.JoinTime > 0 {
 				accepted = 2

@@ -54,6 +54,13 @@ func (l WebRTCStreamLogic) PublishStream(req *dto.PublishStreamReq, claims baseD
 		l.appCtx.Logger().Error("PublishStream resp err", pubResp)
 		return nil, baseErr.ErrInternalServerError
 	}
+
+	_ = l.roomLogic.OnUserJoinEvent(&dto.RoomUserJoinEvent{
+		RoomId:    room.Id,
+		UserId:    req.Uid,
+		Timestamp: time.Now().UnixMilli(),
+	}, claims)
+
 	return &dto.PublishStreamResp{SessionId: pubResp.StreamKey, Sdp: pubResp.AnswerSdp, Type: "answer"}, nil
 }
 
