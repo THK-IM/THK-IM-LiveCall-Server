@@ -36,12 +36,16 @@ func (l WebRTCStreamLogic) PublishStream(req *dto.PublishStreamReq, claims baseD
 		return nil, errorx.ErrNoPermission
 	}
 
+	videoEnable := true
+	if room.Mode == 2 || room.Mode == 4 {
+		videoEnable = false
+	}
 	pubReq := &rtcDto.PublishReq{
 		ChannelId:   room.Id,
 		UId:         fmt.Sprintf("%d", req.Uid),
 		OfferSdp:    req.Sdp,
 		AudioEnable: true,
-		VideoEnable: true,
+		VideoEnable: videoEnable,
 	}
 	pubResp, errPub := l.appCtx.WebRTCApi().Publish(pubReq, claims)
 
