@@ -18,8 +18,8 @@ func LoadSdks(config *conf.LiveCallConfig, logger *logrus.Entry) map[string]inte
 		} else if c.Name == "msg_api" {
 			msgApi := msgSdk.NewMsgApi(c, logger)
 			sdkMap[c.Name] = msgApi
-		} else if c.Name == "web_rtc_api" {
-			rtcApi := rtcSdk.NewRTCChannelApi(c, logger)
+		} else if c.Name == "rtc_api" {
+			rtcApi := rtcSdk.NewRTCApi(c, logger)
 			sdkMap[c.Name] = rtcApi
 		} else if c.Name == "cloudflare_connect_api" {
 			meetingApi := sdk.NewSfuApi(c, logger)

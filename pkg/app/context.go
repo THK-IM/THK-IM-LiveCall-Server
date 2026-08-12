@@ -35,11 +35,11 @@ func (c *Context) MsgApi() msgSdk.MsgApi {
 	return c.Context.SdkMap["msg_api"].(msgSdk.MsgApi)
 }
 
-func (c *Context) WebRTCApi() rtcSdk.RTCChannelApi {
-	if c.Context.SdkMap["web_rtc_api"] == nil {
+func (c *Context) WebRTCApi() rtcSdk.RTCApi {
+	if c.Context.SdkMap["rtc_api"] == nil {
 		return nil
 	}
-	return c.Context.SdkMap["web_rtc_api"].(rtcSdk.RTCChannelApi)
+	return c.Context.SdkMap["rtc_api"].(rtcSdk.RTCApi)
 }
 
 func (c *Context) CloudflareConnectApi() sdk.SfuApi {

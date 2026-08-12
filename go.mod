@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/thk-im/thk-im-base-server v0.0.0-20260803021219-4652d94cd73f
 	github.com/thk-im/thk-im-msgapi-server v0.0.0-20260803023310-198e51062cbb
-	github.com/thk-im/thk-im-rtc-server v0.0.0-20260810075946-283bbdc53ae2
+	github.com/thk-im/thk-im-rtc-server v0.0.0-20260812063623-b4c024692bbd
 	github.com/zoumo/goset v0.2.0
 	gorm.io/gorm v1.31.1
 )
@@ -125,7 +125,7 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/time v0.11.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.5.2 // indirect

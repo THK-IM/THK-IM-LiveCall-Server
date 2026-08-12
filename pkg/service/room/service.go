@@ -65,8 +65,8 @@ func (r baseRoomService) CreateRoom(id, engine string, req *dto.RoomCreateReq, c
 	room.MediaParams.VideoWidth = 1280
 	room.MediaParams.VideoHeight = 720
 	room.MediaParams.VideoFps = 15
-	room.MediaParams.VideoMaxBitrate = 128 * 8 * 1024 // 1024KB
-	room.MediaParams.AudioMaxBitrate = 8 * 8 * 1024   // 8KB
+	room.MediaParams.VideoMaxBitrate = 128 * 8 * 1024 // 128KB
+	room.MediaParams.AudioMaxBitrate = 24 * 8 * 1024  // 24KB
 
 	jsonStr, err := room.Json()
 	if err != nil {

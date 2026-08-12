@@ -34,8 +34,8 @@ Sdks:
     Endpoint: "http://user-api.thkim.com:10000"
   - Name: msg_api
     Endpoint: "http://msg-api.thkim.com:20000"
-  - Name: web_rtc_api
-    Endpoint: "http://rtc-api.thkim.com:31000"
+  - Name: rtc_api
+    Endpoint: "http://rtc-api.thkim.com"
 Cache:
   Cluster: Cluster
   RedisSource:
