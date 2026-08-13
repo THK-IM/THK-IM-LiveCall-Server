@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/thk-im/thk-im-base-server v0.0.0-20260803021219-4652d94cd73f
 	github.com/thk-im/thk-im-msgapi-server v0.0.0-20260803023310-198e51062cbb
-	github.com/thk-im/thk-im-rtc-server v0.0.0-20260812063623-b4c024692bbd
+	github.com/thk-im/thk-im-rtc-server v0.0.0-20260813105354-fe784e807b73
 	github.com/zoumo/goset v0.2.0
 	gorm.io/gorm v1.31.1
 )

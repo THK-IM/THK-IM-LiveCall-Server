@@ -65,7 +65,7 @@ func (l WebRTCStreamLogic) PublishStream(req *dto.PublishStreamReq, claims baseD
 		Timestamp: time.Now().UnixMilli(),
 	}, claims)
 
-	return &dto.PublishStreamResp{SessionId: pubResp.StreamKey, Sdp: pubResp.AnswerSdp, Type: "answer"}, nil
+	return &dto.PublishStreamResp{SessionId: pubResp.SessionId, Sdp: pubResp.AnswerSdp, Type: "answer"}, nil
 }
 
 func (l WebRTCStreamLogic) SubscribeStream(req *dto.SubscribeStreamReq, claims baseDto.ThkClaims) (*dto.SubscribeStreamResp, error) {
@@ -84,7 +84,7 @@ func (l WebRTCStreamLogic) SubscribeStream(req *dto.SubscribeStreamReq, claims b
 		ChannelId: room.Id,
 		UId:       fmt.Sprintf("%d", req.Uid),
 		OfferSdp:  req.Sdp,
-		StreamKey: req.SessionId,
+		SessionId: req.SessionId,
 	}
 	playResp, errPlay := l.appCtx.WebRTCApi().Play(playReq, claims)
 	if errPlay != nil {

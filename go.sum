@@ -338,8 +338,8 @@ github.com/thk-im/thk-im-base-server v0.0.0-20260803021219-4652d94cd73f h1:m5+KV
 github.com/thk-im/thk-im-base-server v0.0.0-20260803021219-4652d94cd73f/go.mod h1:qGquckThlInj4DEZnjqoJZtIezMr7FyxLYRgtX2bYUY=
 github.com/thk-im/thk-im-msgapi-server v0.0.0-20260803023310-198e51062cbb h1:Uz6paSlvLd6nN8flJMDgEeUpHtOLbypm+aSSTbqFzZc=
 github.com/thk-im/thk-im-msgapi-server v0.0.0-20260803023310-198e51062cbb/go.mod h1:l4A2t8u9AMZxWLY4KUQEohwDENCk7L73yA1JUA0LRVs=
-github.com/thk-im/thk-im-rtc-server v0.0.0-20260812063623-b4c024692bbd h1:7JoVhMlEkm3r3R6bJYNw8CpC4+HW524RZdPEden3QJk=
-github.com/thk-im/thk-im-rtc-server v0.0.0-20260812063623-b4c024692bbd/go.mod h1:ciqn3Bh5zLE0qi/MtAo4tgS43HyIi3ygxs+zVB/y2Ro=
+github.com/thk-im/thk-im-rtc-server v0.0.0-20260813105354-fe784e807b73 h1:d3idFza8MYqTjcuIDnFKK+76qrfLpbgUAhCRlfXyXv0=
+github.com/thk-im/thk-im-rtc-server v0.0.0-20260813105354-fe784e807b73/go.mod h1:7wTe8F0ASVg6uwH/SPjdaoCDUmJMe1kIrfPHyBmEAsE=
 github.com/tinylib/msgp v1.6.1 h1:ESRv8eL3u+DNHUoSAAQRE50Hm162zqAnBoGv9PzScPY=
 github.com/tinylib/msgp v1.6.1/go.mod h1:RSp0LW9oSxFut3KzESt5Voq4GVWyS+PSulT77roAqEA=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
