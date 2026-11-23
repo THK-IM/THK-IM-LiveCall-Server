@@ -59,11 +59,9 @@ func (l WebRTCStreamLogic) PublishStream(req *dto.PublishStreamReq, claims baseD
 		return nil, baseErr.ErrInternalServerError
 	}
 
-	_ = l.roomLogic.OnUserJoinEvent(&dto.RoomUserJoinEvent{
-		RoomId:    room.Id,
-		UserId:    req.Uid,
-		Timestamp: time.Now().UnixMilli(),
-	}, claims)
+	if err := l.roomLogic.roomService.PreparePublish(room.Id, req.Uid, pubResp.SessionId); err != nil {
+		return nil, err
+	}
 
 	return &dto.PublishStreamResp{SessionId: pubResp.SessionId, Sdp: pubResp.AnswerSdp, Type: "answer"}, nil
 }
@@ -106,7 +104,7 @@ func (l WebRTCStreamLogic) SubscribeStream(req *dto.SubscribeStreamReq, claims b
 }
 
 func (l WebRTCStreamLogic) UpdateStreamStatus(req *dto.StreamStatusUpdateReq, claims baseDto.ThkClaims) error {
-	_, isMember, errMember := l.checkMember(req.RoomId, req.Uid, claims)
+	room, isMember, errMember := l.checkMember(req.RoomId, req.Uid, claims)
 	if errMember != nil {
 		l.appCtx.Logger().Error("UpdateStreamStatus err, ", errMember)
 		return baseErr.ErrInternalServerError
@@ -117,6 +115,9 @@ func (l WebRTCStreamLogic) UpdateStreamStatus(req *dto.StreamStatusUpdateReq, cl
 		return errorx.ErrNoPermission
 	}
 
+	if req.Status == "ing" {
+		return l.roomLogic.roomService.KeepVoiceRoom(room)
+	}
 	if req.Status == "start" {
 		return l.roomLogic.OnUserPushEvent(&dto.RoomUserPushStreamEvent{
 			RoomId:    req.RoomId,
@@ -125,9 +126,9 @@ func (l WebRTCStreamLogic) UpdateStreamStatus(req *dto.StreamStatusUpdateReq, cl
 			Timestamp: time.Now().UnixMilli(),
 		}, claims)
 	} else if req.Status == "stop" {
-
-	} else if req.Status == "ing" {
-
+		return l.roomLogic.roomService.OnUserStopEvent(&dto.RoomUserPushStreamEvent{
+			RoomId: req.RoomId, UserId: req.Uid, StreamKey: req.SessionId, Timestamp: time.Now().UnixMilli(),
+		}, claims)
 	}
 	return nil
 }
@@ -146,7 +147,7 @@ func (l WebRTCStreamLogic) checkMember(roomId string, uId int64, claims baseDto.
 
 	isMember := false
 	for _, p := range room.Participants {
-		if p.UId == uId {
+		if p.UId == uId && p.JoinTime > 0 && p.LeaveTime == 0 && p.Refuse == 0 {
 			isMember = true
 			break
 		}

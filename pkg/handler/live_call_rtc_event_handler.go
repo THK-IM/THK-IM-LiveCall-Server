@@ -64,12 +64,13 @@ func rtcUserLeaveEvent(appCtx *app.Context) gin.HandlerFunc {
 
 		appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("rtcUserLeaveEvent req: %v", req)
 
-		event := &dto.RoomUserLevelEvent{
+		event := &dto.RoomUserPushStreamEvent{
+			StreamKey: req.SessionId,
 			UserId:    userId,
 			RoomId:    req.ChannelId,
 			Timestamp: req.Timestamp,
 		}
-		if err := l.OnUserLeaveEvent(event, claims); err != nil {
+		if err := l.OnUserStopEvent(event, claims); err != nil {
 			appCtx.Logger().WithFields(logrus.Fields(claims)).Errorf("rtcUserLeaveEvent %s", err.Error())
 			baseDto.ResponseInternalServerError(ctx, err)
 		} else {
@@ -97,6 +98,7 @@ func rtcUserPushEvent(appCtx *app.Context) gin.HandlerFunc {
 		}
 		appCtx.Logger().WithFields(logrus.Fields(claims)).Tracef("rtcUserPushEvent req: %v", req)
 		event := &dto.RoomUserPushStreamEvent{
+			StreamKey: req.SessionId,
 			UserId:    userId,
 			RoomId:    req.ChannelId,
 			Timestamp: req.Timestamp,

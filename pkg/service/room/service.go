@@ -23,6 +23,10 @@ const (
 	ParticipantRequestRoomTime = "live_server:room:%s:uid:%d:r_t"
 )
 
+var deleteSessionMapping = redis.NewScript(`
+if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end
+return 0`)
+
 type Service interface {
 	// CreateRoom 创建房间
 	CreateRoom(req *dto.RoomCreateReq, claims baseDto.ThkClaims) (*dto.RoomJoinResp, error)
@@ -42,6 +46,9 @@ type Service interface {
 	OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims baseDto.ThkClaims) error
 	// OnUserPushEvent 房间参与人推流事件
 	OnUserPushEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error
+	OnUserStopEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error
+	KeepVoiceRoom(room *dto.Room) error
+	PreparePublish(roomID string, uid int64, key string) error
 	// CheckRooms 检查房间是否关闭
 	CheckRooms() error
 }
@@ -80,7 +87,11 @@ func (r baseRoomService) CreateRoom(id, engine string, req *dto.RoomCreateReq, c
 	}
 
 	sessionCacheKey := r.getSessionCacheKey(req.SessionId)
-	errSession := r.appCtx.RedisCache().Set(context.Background(), sessionCacheKey, room.Id, time.Minute).Err()
+	ttl := time.Minute
+	if room.Mode == 4 {
+		ttl = time.Hour
+	}
+	errSession := r.appCtx.RedisCache().Set(context.Background(), sessionCacheKey, room.Id, ttl).Err()
 	if errSession != nil {
 		return nil, errSession
 	}
@@ -100,15 +111,16 @@ func (r baseRoomService) FindRoomById(id string, claims baseDto.ThkClaims) (*dto
 		return nil, e
 	}
 	members, errMembers := r.appCtx.RedisCache().HVals(context.Background(), r.getParticipantsCacheKey(id)).Result()
-	if errMembers == nil {
-		participants := make([]*dto.Participant, 0)
-		for _, m := range members {
-			if participant, errJson := dto.NewParticipantByJson([]byte(m)); errJson == nil {
-				participants = append(participants, participant)
-			}
-		}
-		room.Participants = participants
+	if errMembers != nil {
+		return nil, errMembers
 	}
+	participants := make([]*dto.Participant, 0)
+	for _, m := range members {
+		if participant, errJson := dto.NewParticipantByJson([]byte(m)); errJson == nil {
+			participants = append(participants, participant)
+		}
+	}
+	room.Participants = participants
 	return room, nil
 }
 
@@ -144,7 +156,7 @@ func (r baseRoomService) DestroyRoom(id string, claims baseDto.ThkClaims) error 
 		return err
 	}
 	if roomVo.SessionId != nil {
-		if err := r.appCtx.RedisCache().Del(context.Background(), r.getSessionCacheKey(*roomVo.SessionId)).Err(); err != nil {
+		if err := deleteSessionMapping.Run(context.Background(), r.appCtx.RedisCache(), []string{r.getSessionCacheKey(*roomVo.SessionId)}, roomVo.Id).Err(); err != nil {
 			return err
 		}
 	}
@@ -163,11 +175,11 @@ func (r baseRoomService) AddRoomMember(id string, uId int64, claims baseDto.ThkC
 	}
 	pJson, err := participant.Json()
 	if err != nil {
-		return nil
+		return err
 	}
 
 	cacheKey := r.getParticipantsCacheKey(id)
-	err = r.appCtx.RedisCache().HSet(context.Background(), cacheKey, fmt.Sprintf("%d", uId), pJson).Err()
+	err = r.appCtx.RedisCache().HSetNX(context.Background(), cacheKey, fmt.Sprintf("%d", uId), pJson).Err()
 	return err
 }
 
@@ -200,25 +212,17 @@ func (r baseRoomService) OnUserJoinEvent(event *dto.RoomUserJoinEvent, claims ba
 	if room == nil {
 		return nil
 	}
-	participant := &dto.Participant{
-		UId:      event.UserId,
-		Role:     dto.Broadcast,
-		JoinTime: event.Timestamp,
-	}
-	pJson, err := participant.Json()
-	if err != nil {
-		return nil
-	}
-	// 房间失效时间+1小时
-	roomCacheKey := r.getRoomCacheKey(event.RoomId)
-	err = r.appCtx.RedisCache().Expire(context.Background(), roomCacheKey, time.Hour).Err()
+	_, err := r.updateMember(room.Id, event.UserId, func(m *memberState) bool {
+		if m.JoinTime > 0 && m.LeaveTime == 0 {
+			return false
+		}
+		m.JoinTime, m.LeaveTime, m.Refuse = event.Timestamp, 0, 0
+		return true
+	})
 	if err != nil {
 		return err
 	}
-
-	cacheKey := r.getParticipantsCacheKey(event.RoomId)
-	err = r.appCtx.RedisCache().HSet(context.Background(), cacheKey, fmt.Sprintf("%d", event.UserId), pJson).Err()
-	return err
+	return r.appCtx.RedisCache().Expire(context.Background(), r.getRoomCacheKey(room.Id), time.Hour).Err()
 }
 
 func (r baseRoomService) OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims baseDto.ThkClaims) error {
@@ -230,21 +234,20 @@ func (r baseRoomService) OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims 
 		return nil
 	}
 
-	for _, p := range room.Participants {
-		if p.UId == event.UserId {
-			p.LeaveTime = event.Timestamp
-			pJson, err := p.Json()
-			if err != nil {
-				return nil
-			}
-			cacheKey := r.getParticipantsCacheKey(event.RoomId)
-			err = r.appCtx.RedisCache().HSet(context.Background(), cacheKey, fmt.Sprintf("%d", event.UserId), pJson).Err()
+	changed, err := r.updateMember(room.Id, event.UserId, func(m *memberState) bool {
+		if m.LeaveTime != 0 {
+			return false
 		}
+		m.LeaveTime, m.StreamKey, m.IssuedKey = event.Timestamp, "", ""
+		return true
+	})
+	if err != nil || !changed {
+		return err
 	}
 
 	count := 0
 	for _, p := range room.Participants {
-		if p.LeaveTime == 0 && p.JoinTime > 0 {
+		if p.UId != event.UserId && p.LeaveTime == 0 && p.JoinTime > 0 {
 			count++
 		}
 	}
@@ -260,44 +263,7 @@ func (r baseRoomService) OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims 
 }
 
 func (r baseRoomService) OnUserPushEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error {
-	r.appCtx.Logger().Tracef("OnUserPushEvent %v", event)
-	room, errRoom := r.FindRoomById(event.RoomId, claims)
-	if errRoom != nil {
-		return errRoom
-	}
-	if room == nil {
-		return nil
-	}
-
-	uIds := make([]int64, 0)
-	for _, participant := range room.Participants {
-		if participant.UId == event.UserId {
-			participant.StreamKey = event.StreamKey
-			pJson, err := participant.Json()
-			if err != nil {
-				r.appCtx.Logger().Error("OnUserPushEvent participant Json", event, err, participant)
-				return nil
-			}
-			// 房间参与人失效时间+1小时
-			cacheKey := r.getParticipantsCacheKey(event.RoomId)
-			err = r.appCtx.RedisCache().HSet(context.Background(), cacheKey, fmt.Sprintf("%d", event.UserId), pJson).Err()
-			if err != nil {
-				r.appCtx.Logger().Error("OnUserPushEvent participant Json", event, err, participant)
-			}
-		} else {
-			uIds = append(uIds, participant.UId)
-		}
-	}
-
-	if len(uIds) > 0 {
-		pushSignal := dto.MakeParticipantPushStreamSignal(event.RoomId, event.StreamKey, event.UserId, event.Timestamp)
-		err := r.signalService.PushSignal(pushSignal, uIds, claims)
-		if err != nil {
-			r.appCtx.Logger().Error("OnUserPushEvent pushSignal", event, err, pushSignal)
-		}
-	}
-
-	return nil
+	return r.streamEvent(event, true, claims)
 }
 
 func (r baseRoomService) CheckRooms() error {

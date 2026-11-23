@@ -199,6 +199,11 @@ func (l RoomLogic) RoomMemberLeave(req *dto.RoomMemberLeaveReq, claims baseDto.T
 	if roomVo == nil {
 		return nil
 	}
+	if err := l.OnUserLeaveEvent(&dto.RoomUserLevelEvent{
+		RoomId: req.RoomId, UserId: req.UId, Timestamp: time.Now().UnixMilli(),
+	}, claims); err != nil {
+		return err
+	}
 	members := make([]int64, 0)
 	for _, p := range roomVo.Participants {
 		members = append(members, p.UId)
@@ -245,6 +250,9 @@ func (l RoomLogic) DeleteRoom(req *dto.RoomDelReq, claims baseDto.ThkClaims) err
 		l.appCtx.Logger().WithFields(logrus.Fields(claims)).Trace("deleteRoom roomVo is nil ", req)
 		return nil
 	}
+	if roomVo.OwnerId != req.UId {
+		return errorx.ErrNoPermission
+	}
 	if len(roomVo.Participants) > 0 {
 		members := make([]int64, 0)
 		for _, p := range roomVo.Participants {
@@ -275,9 +283,9 @@ func (l RoomLogic) OnUserLeaveEvent(event *dto.RoomUserLevelEvent, claims baseDt
 }
 
 func (l RoomLogic) OnUserPushEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error {
-	err := l.roomService.OnUserPushEvent(event, claims)
-	if err != nil {
-		l.appCtx.Logger().Error("OnUserPushEvent OnUserPushEvent", event, err, claims)
-	}
-	return nil
+	return l.roomService.OnUserPushEvent(event, claims)
+}
+
+func (l RoomLogic) OnUserStopEvent(event *dto.RoomUserPushStreamEvent, claims baseDto.ThkClaims) error {
+	return l.roomService.OnUserStopEvent(event, claims)
 }

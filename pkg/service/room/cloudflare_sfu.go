@@ -63,13 +63,11 @@ func (w CloudflareSFURoomService) CreateRoom(req *dto.RoomCreateReq, claims base
 			return nil, errRoom
 		}
 		if room != nil {
-			for _, p := range room.Participants {
-				if p.UId == req.UId && p.StreamKey != "" {
-					err := w.DestroyRoom(room.Id, claims)
-					if err != nil {
-						return nil, err
-					}
-				}
+			if room.Mode != req.Mode {
+				return nil, errorx.ErrRoomModeConflict
+			}
+			if room.OwnerId != req.UId {
+				return nil, errorx.ErrNoPermission
 			}
 			resp.Room = room
 		}
@@ -91,7 +89,14 @@ func (w CloudflareSFURoomService) CreateRoom(req *dto.RoomCreateReq, claims base
 		return nil, err
 	}
 	err = w.AddRoomMember(resp.Room.Id, req.UId, claims)
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+	role := int8(dto.Broadcast)
+	if resp.Room.Mode == 4 {
+		role = dto.Audience
+	}
+	return w.RequestJoinRoom(&dto.RoomJoinReq{RoomId: resp.Room.Id, UId: req.UId, Role: role}, claims)
 }
 
 func (w CloudflareSFURoomService) RequestJoinRoom(req *dto.RoomJoinReq, claims baseDto.ThkClaims) (*dto.RoomJoinResp, error) {
@@ -101,6 +106,32 @@ func (w CloudflareSFURoomService) RequestJoinRoom(req *dto.RoomJoinReq, claims b
 	}
 	if room == nil {
 		return nil, errorx.ErrRoomNotExisted
+	}
+	// Only invited members may join. Role describes initial media intent.
+	_, err := w.updateMember(room.Id, req.UId, func(m *memberState) bool {
+		if m.JoinTime > 0 && m.LeaveTime == 0 {
+			return false
+		}
+		m.JoinTime, m.LeaveTime, m.Refuse = time.Now().UnixMilli(), 0, 0
+		if req.Role == dto.Audience {
+			m.Role = dto.Audience
+		} else {
+			m.Role = dto.Broadcast
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+	room, err = w.FindRoomById(req.RoomId, claims)
+	if err != nil {
+		return nil, err
+	}
+	if room == nil {
+		return nil, errorx.ErrRoomNotExisted
+	}
+	if err := w.KeepVoiceRoom(room); err != nil {
+		return nil, err
 	}
 	return &dto.RoomJoinResp{
 		Room:  room,
